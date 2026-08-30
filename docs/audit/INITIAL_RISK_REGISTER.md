@@ -1,0 +1,66 @@
+# Initial Risk Register
+
+## Project: AI Classroom Cheating Detection System
+
+### High Priority Risks
+
+| ID | Risk Description | Category | Likelihood | Impact | Mitigation |
+|----|-----------------|----------|------------|--------|------------|
+| R01 | Insufficient RAM (8 GB) for AI processing with YOLO models | Technical | High | High | - Implement frame skipping (every 3rd frame default)<br>- Use nano-scale YOLO models only<br>- Monitor memory usage; pause processing if limit approached<br>- Process one camera at a time |
+| R02 | No GPU available; CPU-only inference performance limitations | Technical | High | Medium | - Benchmark CPU FPS at 640x360 and 480x270<br>- Configure process-every-N-frames aggressively<br>- Document latency expectations<br>- Accept degraded but functional performance |
+| R03 | Python 3.14.0 package compatibility issues with ultralytics/yolov8 | Technical | Medium | High | - Test package compatibility immediately in Phase 1<br>- Pin specific versions in requirements.txt<br>- Have fallback to Python 3.11 if critical<br>- Use pip install --upgrade with pins |
+| R04 | XAMPP MySQL service not running for dashboard development | Technical | Medium | Medium | - Start MySQL service during setup<br>- Document XAMPP startup procedure<br>- Consider SQLite as temporary alternative<br>- Ensure Docker availability if needed |
+| R05 | EZVIZ CP1 Lite RTSP/ONVIF availability unknown | Technical | High | Medium | - Test camera stream accessibility early<br>- Develop camera-source abstraction supporting multiple sources<br>- Fallback to local webcam for live mode<br>- Document RTSP limitation if unavailable |
+
+### Medium Priority Risks
+
+| ID | Risk Description | Category | Likelihood | Impact | Mitigation |
+|----|-----------------|----------|------------|--------|------------|
+| R06 | License conflicts with YOUL/Ultralytics model license | Legal | Medium | High | - Inspect ultralytics package license immediately<br>- Create THIRD_PARTY_NOTICES.md during setup<br>- Do not auto-select MIT if obligations conflict<br>- Document model version, source, and license |
+| R07 | Dataset licensing restrictions if/when collecting exam footage | Legal | Medium | High | - Create DATA_COLLECTION_PROTOCOL.md<br>- Obtain institutional/supervisor approval<br>- Use staged recordings with informed participants<br>- Never use real examination recordings without authorization |
+| R08 | Camera credentials exposed in source code or logs | Security | High | High | - Never commit credentials to Git<br>- Use .env files excluded from version control<br>- Implement credential abstraction layer<br>- Audit all API responses for secret leakage |
+| R09 | Data leakage across train/test splits from adjacent frames | Research | Medium | Medium | - Implement session-based splitting<br>- Maintain untouched final test set<br>- Document splitting strategy<br>- Prevent adjacent-frame leakage |
+| R10 | Phone number exposure in package metadata or security feeds | Privacy | Medium | Medium | - Use email as security-reporting contact only<br>- Do not publish phone in package metadata<br>- Redact phone from all documentation outputs |
+
+### Low Priority Risks
+
+| ID | Risk Description | Category | Likelihood | Impact | Mitigation |
+|----|-----------------|----------|------------|--------|------------|
+| R11 | npm/node compatibility with future Laravel versions | Technical | Low | Low | - Document exact npm/node versions at setup<br>- Pin supported Laravel release<br>- Monitor Laravel PHP version requirements |
+| R12 | Windows-specific path issues in Python scripts | Technical | Medium | Low | - Use pathlib for all path operations<br>- Test on target Windows environment<br>- Avoid hard-coded forward slashes |
+| R13 | Debug mode accidentally left enabled in production | Security | Low | High | - Enforce production configuration<br>- Add runtime check for DEBUG mode<br>- CI pipeline validation |
+
+### Identified Dependencies & License Concerns
+
+#### Python Dependencies (to be installed)
+- **ultralytics**: License must be verified (typically ROBOTIC-OTS or similar)
+- **pytest**: MIT licensed (safe)
+- **ruff**: Apache 2.0 licensed (safe)
+- **black**: MIT licensed (safe)
+- **mediapipe**: Apache 2.0 licensed (safe)
+- **bytetrack or deepsort**: Varies; will verify
+
+#### PHP Dependencies (Laravel)
+- **Laravel Framework**: MIT licensed (safe, with exceptions)
+- **Composer packages**: Varies; will verify each
+
+#### Model License
+- **YOLO pretrained weights**: Ultralytics license terms apply
+- **Must inspect**: license/ directory in ultralytics package
+- **Must not overwrite released model without versioning**
+
+### Risk Register Status
+- **Created**: Phase 0 commencement
+- **Last Updated**: See document header
+- **Review Required**: Before Phase 2 (Shared AI Foundation) commencement
+- **Owner**: Principal Computer Vision Engineer / Software Architect
+
+### Risk Acceptance
+All risks documented with mitigation strategies. High-impact risks (R01, R03, R04, R05, R06, R08) have concrete mitigation plans. Acceptance pending Phase 1 plan consistency check.
+
+### Next Steps
+1. Verify Python package compatibility (R03)
+2. Test YOLO model license (R06)
+3. Start XAMPP MySQL service (R04)
+4. Test EZVIZ stream accessibility (R05)
+5. Present Phase 1 plan after risk mitigation verification
