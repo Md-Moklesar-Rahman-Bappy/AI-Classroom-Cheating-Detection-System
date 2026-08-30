@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \Illuminate\Support\Facades\Gate::policy(\App\Models\VideoAsset::class, \App\Policies\VideoAssetPolicy::class);
+        \Illuminate\Support\Facades\Gate::policy(\App\Models\AnalysisJob::class, \App\Policies\AnalysisJobPolicy::class);
     }
 }
