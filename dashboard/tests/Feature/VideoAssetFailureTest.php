@@ -84,6 +84,35 @@ test('create job requires video asset for recorded_video', function () {
     $response->assertSessionHasErrors('video_asset_id');
 });
 
+test('soft delete video asset', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'SoftDeleteSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    $asset = VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'soft.mp4', 'stored_filename' => 'soft.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    expect(VideoAsset::count())->toBe(1);
+    $asset->delete();
+    expect(VideoAsset::count())->toBe(0);
+    expect(VideoAsset::withTrashed()->count())->toBe(1);
+});
+
+test('restore soft deleted video asset', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'RestoreSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    $asset = VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'restore.mp4', 'stored_filename' => 'restore.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    $asset->delete();
+    expect(VideoAsset::withTrashed()->count())->toBe(1);
+    $asset->restore();
+    expect(VideoAsset::count())->toBe(1);
+    expect(VideoAsset::find($asset->id))->not->toBeNull();
+});
+
+test('video asset index page does not crash with deleted_at column', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'IndexSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'index.mp4', 'stored_filename' => 'index.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    $response = $this->actingAs($admin)->get(route('video-assets.index'));
+    $response->assertStatus(200);
+});
+
 test('create job form shows video asset dropdown', function () {
     $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
     $session = ExamSession::create(['name' => 'TestSession6', 'status' => 'pending', 'created_by' => $admin->id]);
