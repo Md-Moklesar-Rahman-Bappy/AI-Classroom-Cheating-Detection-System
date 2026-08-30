@@ -38,7 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('exam-sessions', ExamSessionController::class);
     Route::resource('camera-sources', CameraSourceController::class);
     Route::resource('video-assets', VideoAssetController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
-    Route::resource('analysis-jobs', AnalysisJobController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+    Route::resource('analysis-jobs', AnalysisJobController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('analysis-jobs/{analysisJob}/sync', [AnalysisJobController::class, 'sync'])->name('analysis-jobs.sync');
     Route::post('analysis-jobs/{analysisJob}/cancel', [AnalysisJobController::class, 'cancel'])->name('analysis-jobs.cancel');
     Route::post('analysis-jobs/{analysisJob}/retry', [AnalysisJobController::class, 'retry'])->name('analysis-jobs.retry');

@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AnalysisJob extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = ['exam_session_id', 'source_type', 'video_asset_id', 'camera_source_id', 'model_version_id', 'status', 'remote_job_id', 'remote_status', 'remote_progress', 'remote_output_metadata', 'correlation_id', 'config', 'progress_percent', 'started_at', 'completed_at', 'failed_at', 'failure_reason', 'created_by'];
 
     protected $casts = ['config' => 'array', 'remote_output_metadata' => 'array', 'started_at' => 'datetime', 'completed_at' => 'datetime', 'failed_at' => 'datetime'];

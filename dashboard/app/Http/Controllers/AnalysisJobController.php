@@ -18,6 +18,7 @@ class AnalysisJobController extends Controller
 {
     public function index()
     {
+        $this->authorize('viewAny', AnalysisJob::class);
         $jobs = AnalysisJob::with(['session', 'modelVersion'])->latest()->paginate(10);
 
         return view('analysis-jobs.index', compact('jobs'));
@@ -25,6 +26,7 @@ class AnalysisJobController extends Controller
 
     public function create()
     {
+        $this->authorize('create', AnalysisJob::class);
         $sessions = ExamSession::all();
         $models = ModelVersion::active()->get();
         $videoAssets = VideoAsset::with('session')->latest()->get();
@@ -32,8 +34,35 @@ class AnalysisJobController extends Controller
         return view('analysis-jobs.create', compact('sessions', 'models', 'videoAssets'));
     }
 
+    public function edit(AnalysisJob $analysisJob)
+    {
+        $this->authorize('update', $analysisJob);
+        $sessions = ExamSession::all();
+        $models = ModelVersion::active()->get();
+        $videoAssets = VideoAsset::with('session')->latest()->get();
+
+        return view('analysis-jobs.edit', compact('analysisJob', 'sessions', 'models', 'videoAssets'));
+    }
+
+    public function update(Request $request, AnalysisJob $analysisJob)
+    {
+        $this->authorize('update', $analysisJob);
+        $request->validate([
+            'exam_session_id' => 'required|exists:exam_sessions,id',
+            'source_type' => 'required|in:recorded_video,live_stream,webcam,test_source',
+            'model_version_id' => 'required|exists:model_versions,id',
+            'video_asset_id' => 'required_if:source_type,recorded_video|nullable|exists:video_assets,id',
+        ]);
+        $analysisJob->update($request->only(['exam_session_id', 'source_type', 'model_version_id', 'video_asset_id']));
+        AuditHelper::log('job_edited', 'analysis_job', (string) $analysisJob->id, 'success', ['changes' => $request->only(['exam_session_id', 'source_type'])]);
+        Log::info('Analysis job edited', ['job_id' => $analysisJob->id, 'user_id' => auth()->id()]);
+
+        return redirect()->route('analysis-jobs.show', $analysisJob)->with('success', 'Job updated');
+    }
+
     public function store(Request $request, AiServiceClient $client)
     {
+        $this->authorize('create', AnalysisJob::class);
         $request->validate([
             'exam_session_id' => 'required|exists:exam_sessions,id',
             'source_type' => 'required|in:recorded_video,live_stream,webcam,test_source',
@@ -70,6 +99,7 @@ class AnalysisJobController extends Controller
 
     public function show(AnalysisJob $analysisJob)
     {
+        $this->authorize('view', $analysisJob);
         $analysisJob->load(['session', 'videoAsset', 'modelVersion', 'events.evidences', 'metrics']);
         // Auto-sync if remote job exists and not completed
         if ($analysisJob->remote_job_id && ! in_array($analysisJob->status, ['completed', 'failed', 'cancelled'])) {
@@ -89,6 +119,7 @@ class AnalysisJobController extends Controller
 
     public function sync(AnalysisJob $analysisJob, AiServiceClient $client)
     {
+        $this->authorize('view', $analysisJob);
         if (! $analysisJob->remote_job_id) {
             return back()->withErrors(['job' => 'No remote job to sync']);
         }
@@ -110,6 +141,7 @@ class AnalysisJobController extends Controller
 
     public function cancel(AnalysisJob $analysisJob, AiServiceClient $client)
     {
+        $this->authorize('cancel', $analysisJob);
         if (in_array($analysisJob->status, ['completed', 'failed', 'cancelled'])) {
             return back()->withErrors(['job' => 'Cannot cancel '.$analysisJob->status]);
         }
@@ -132,6 +164,7 @@ class AnalysisJobController extends Controller
 
     public function retry(AnalysisJob $analysisJob)
     {
+        $this->authorize('retry', $analysisJob);
         if (! in_array($analysisJob->status, ['failed', 'cancelled'])) {
             return back()->withErrors(['job' => 'Can only retry failed/cancelled']);
         }
@@ -153,9 +186,11 @@ class AnalysisJobController extends Controller
 
     public function destroy(AnalysisJob $analysisJob)
     {
+        $this->authorize('delete', $analysisJob);
         $analysisJob->delete();
-        AuditHelper::log('job_deleted', 'analysis_job', (string) $analysisJob->id);
+        AuditHelper::log('job_deleted', 'analysis_job', (string) $analysisJob->id, 'success', ['soft_deleted' => true]);
+        Log::info('Analysis job soft deleted', ['job_id' => $analysisJob->id, 'user_id' => auth()->id()]);
 
-        return redirect()->route('analysis-jobs.index')->with('success', 'Deleted');
+        return redirect()->route('analysis-jobs.index')->with('success', 'Job deleted (soft)');
     }
 }
