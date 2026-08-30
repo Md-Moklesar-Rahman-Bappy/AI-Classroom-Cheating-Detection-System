@@ -70,10 +70,9 @@ class VideoAssetController extends Controller
 
     public function destroy(VideoAsset $videoAsset)
     {
-        if (method_exists($videoAsset, 'analysisJobs') && $videoAsset->analysisJobs()->exists()) {
-            return back()->withErrors(['video' => 'Cannot delete video with jobs']);
+        if ($videoAsset->analysisJobs()->exists()) {
+            return back()->withErrors(['video' => 'Cannot delete video with linked jobs']);
         }
-        Storage::disk('local')->delete('video_assets/'.$videoAsset->stored_filename);
         $videoAsset->delete();
         AuditHelper::log('video_deleted', 'video_asset', (string) $videoAsset->id);
 
