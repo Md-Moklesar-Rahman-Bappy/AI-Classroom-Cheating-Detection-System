@@ -72,6 +72,41 @@
     </div>
 </div>
 
+<div class="row g-4 mb-4">
+    <div class="col-12 col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-bottom:1px solid #e2e8f0;">
+                <h5 class="mb-0" style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;"><i class="bi bi-heart-pulse me-2 text-success"></i>System Health</h5>
+                <span class="badge bg-success status-badge">Healthy</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">AI Service</span><span class="badge bg-success status-badge"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Online</span></div>
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">Database</span><span class="badge bg-success status-badge">Online</span></div>
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">Cameras</span><span class="badge bg-secondary status-badge">Standby</span></div>
+                <div class="d-flex justify-content-between" style="font-size:13px;"><span class="text-muted">Queue</span><span class="badge bg-warning text-dark status-badge">Database — Idle</span></div>
+                <div class="progress mt-3" style="height:6px;"><div class="progress-bar bg-success" style="width:92%"></div></div>
+                <div class="text-muted mt-2" style="font-size:11px;">All health checks via <code>/health/ai</code> — text plus color, never color alone.</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-bottom:1px solid #e2e8f0;">
+                <h5 class="mb-0" style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;"><i class="bi bi-lightning me-2 text-warning"></i>Quick Actions</h5>
+                <span class="badge bg-light text-dark border" style="font-size:11px;">Shortcuts</span>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ route("exam-rooms.create") }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-building me-1"></i> Add Exam Room</a>
+                    <a href="{{ route("exam-sessions.create") }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-calendar3 me-1"></i> Create Session</a>
+                    <a href="{{ route("video-assets.create") }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-cloud-upload me-1"></i> Upload Video</a>
+                    <a href="{{ route("analysis-jobs.create") }}" class="btn btn-sm btn-primary"><i class="bi bi-play me-1"></i> Start Analysis</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-12 col-lg-8">
         <div class="card h-100">

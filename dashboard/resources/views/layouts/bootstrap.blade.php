@@ -23,7 +23,11 @@
         .nav-link.active { background:var(--sidebar-active); color:#fff; border-left:3px solid #0d6efd; }
         .nav-link i { font-size:16px; width:16px; }
         .sidebar-footer { padding:12px 16px; border-top:1px solid #1e293b; }
-        .main { margin-left: var(--sidebar-w); min-height:100vh; display:flex; flex-direction:column; }
+        .sidebar.collapsed { width:64px; }
+        .sidebar.collapsed .nav-section, .sidebar.collapsed .sub, .sidebar.collapsed .nav-link span, .sidebar.collapsed .sidebar-footer .flex-grow-1 { display:none; }
+        .sidebar.collapsed .nav-link { justify-content:center; padding:10px; }
+        .sidebar.collapsed + .main { margin-left:64px; }
+        .main { margin-left: var(--sidebar-w); min-height:100vh; display:flex; flex-direction:column; transition: margin-left 0.2s; }
         .topbar { background:#fff; border-bottom:1px solid #e2e8f0; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
         .content { padding:24px; flex:1; max-width:1400px; width:100%; margin:0 auto; }
         .ai-notice { background:#fffbeb; border-left:4px solid #f59e0b; padding:12px 16px; border-radius:8px; margin-bottom:16px; font-size:13px; }
@@ -71,24 +75,27 @@
             <a class="nav-link {{ request()->routeIs("help.*") ? "active" : "" }}" href="{{ route("help.index") }}"><i class="bi bi-question-circle"></i> Help</a>
         </div>
         <div class="sidebar-footer">
-            <div class="d-flex align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2 mb-2">
                 <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width:32px;height:32px;font-size:12px;">{{ strtoupper(substr(Auth::user()->name ?? "U",0,1)) }}</div>
                 <div class="flex-grow-1" style="min-width:0;"><div class="text-white" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ Auth::user()->name ?? "User" }}</div><div style="font-size:11px;color:var(--sidebar-muted);">{{ Auth::user()->roles->first()->name ?? "—" }}</div></div>
                 <div class="dropdown">
                     <a class="text-muted" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="{{ route("profile.edit") }}"><i class="bi bi-person me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="{{ route("settings.index") }}"><i class="bi bi-gear me-2"></i>Settings</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><form method="POST" action="{{ route("logout") }}">@csrf<button class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i>Logout</button></form></li>
                     </ul>
                 </div>
             </div>
+            <form method="POST" action="{{ route("logout") }}" class="d-grid">@csrf<button class="btn btn-sm btn-outline-light w-100" style="font-size:12px;"><i class="bi bi-box-arrow-right me-1"></i> Logout</button></form>
         </div>
     </nav>
     <div class="main">
         <div class="topbar">
             <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-outline-secondary d-lg-none" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+                <button class="btn btn-outline-secondary d-lg-none" onclick="toggleSidebar()" aria-label="Open navigation"><i class="bi bi-list"></i></button>
+                <button class="btn btn-outline-secondary d-none d-md-block d-lg-none" onclick="toggleCollapse()" aria-label="Collapse sidebar"><i class="bi bi-layout-sidebar-inset"></i></button>
                 <nav aria-label="breadcrumb"><ol class="breadcrumb mb-0" style="font-size:13px;"><li class="breadcrumb-item"><a href="{{ route("dashboard") }}" class="text-decoration-none">Home</a></li><li class="breadcrumb-item active">@yield("title")</li></ol></nav>
             </div>
             <div class="d-flex align-items-center gap-3">
@@ -123,6 +130,9 @@
         function toggleSidebar(){
             const sb=document.getElementById("sidebar"), bd=document.getElementById("backdrop");
             sb.classList.toggle("show"); bd.classList.toggle("d-none");
+        }
+        function toggleCollapse(){
+            document.getElementById("sidebar").classList.toggle("collapsed");
         }
     </script>
     @stack("scripts")
