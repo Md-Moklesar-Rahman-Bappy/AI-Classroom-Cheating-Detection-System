@@ -17,7 +17,7 @@ test('sidebar shows user name and role', function () {
     $response = $this->actingAs($user)->get(route('dashboard'));
     $response->assertStatus(200);
     $response->assertSee($user->name);
-    $response->assertSee('system_admin');
+    $response->assertSee('System Administrator');
 });
 
 test('sidebar footer contains profile, settings and logout', function () {

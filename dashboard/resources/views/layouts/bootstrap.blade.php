@@ -77,7 +77,7 @@
         <div class="sidebar-footer">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width:32px;height:32px;font-size:12px;">{{ strtoupper(substr(Auth::user()->name ?? "U",0,1)) }}</div>
-                <div class="flex-grow-1" style="min-width:0;"><div class="text-white" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ Auth::user()->name ?? "User" }}</div><div style="font-size:11px;color:var(--sidebar-muted);">{{ Auth::user()->roles->first()->name ?? "—" }}</div></div>
+                <div class="flex-grow-1" style="min-width:0;"><div class="text-white" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ Auth::user()->name ?? "User" }}</div><div style="font-size:11px;color:var(--sidebar-muted);">{{ Auth::user()->roles->first()?->description ?? Auth::user()->roles->first()?->name ?? "No Role Assigned" }}</div></div>
                 <div class="dropdown">
                     <a class="text-muted" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></a>
                     <ul class="dropdown-menu dropdown-menu-end">
