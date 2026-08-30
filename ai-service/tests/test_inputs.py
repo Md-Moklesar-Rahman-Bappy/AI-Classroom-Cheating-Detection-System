@@ -1,4 +1,10 @@
-import tempfile, os, cv2, numpy as np, pathlib
+import os
+import pathlib
+import tempfile
+
+import cv2
+import numpy as np
+
 from app.inputs.recorded import RecordedVideoInput
 from app.inputs.scheduler import FrameScheduler
 

@@ -1,5 +1,6 @@
-from app.core.logging import SecretRedactionFilter
 import logging
+
+from app.core.logging import SecretRedactionFilter
 
 
 def test_redaction():

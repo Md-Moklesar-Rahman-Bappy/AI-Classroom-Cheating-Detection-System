@@ -1,4 +1,5 @@
 import numpy as np
+
 from app.detection.yolo_detector import UltralyticsDetector
 
 
@@ -27,8 +28,8 @@ def test_detection_result_mapping():
 
 
 def test_resize_behavior():
+
     from app.inputs.scheduler import FrameScheduler
-    import cv2
 
     sched = FrameScheduler(process_every_n_frames=1, target_width=320, target_height=240)
     frame = np.zeros((480, 640, 3), dtype=np.uint8)

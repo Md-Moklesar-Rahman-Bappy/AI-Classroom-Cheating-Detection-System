@@ -1,8 +1,12 @@
+import os
+import tempfile
+
+import cv2
 import numpy as np
-from app.rendering.renderer import BoundingBoxRenderer
-from app.schemas.models import DetectionResult, BoundingBox
+
 from app.metrics.collector import MetricsCollector
-import tempfile, os, cv2
+from app.rendering.renderer import BoundingBoxRenderer
+from app.schemas.models import BoundingBox, DetectionResult
 
 
 def test_renderer():
