@@ -113,6 +113,57 @@ test('video asset index page does not crash with deleted_at column', function ()
     $response->assertStatus(200);
 });
 
+test('edit video asset page loads', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'EditSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    $asset = VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'edit.mp4', 'stored_filename' => 'edit.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    $response = $this->actingAs($admin)->get(route('video-assets.edit', $asset));
+    $response->assertStatus(200);
+    $response->assertSee('Edit Video Asset');
+});
+
+test('update video asset', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'UpdateSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    $asset = VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'update.mp4', 'stored_filename' => 'update.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    $response = $this->actingAs($admin)->put(route('video-assets.update', $asset), [
+        'exam_session_id' => $session->id,
+        'original_filename' => 'updated.mp4',
+        'validation_status' => 'valid',
+    ]);
+    $response->assertRedirect(route('video-assets.index'));
+    expect(VideoAsset::find($asset->id)->original_filename)->toBe('updated.mp4');
+});
+
+test('soft delete blocked when linked analysis jobs exist', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'BlockedLinkedSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    $asset = VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'blocked_linked.mp4', 'stored_filename' => 'blocked_linked.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    $model = ModelVersion::firstOrCreate(['checksum_sha256' => str_repeat('c', 64)], ['name' => 'yolo11n.pt', 'version' => 'v1', 'weight_filename' => 'yolo11n.pt', 'class_list' => json_encode(['person']), 'license' => 'AGPL-3.0']);
+    AnalysisJob::create(['exam_session_id' => $session->id, 'video_asset_id' => $asset->id, 'source_type' => 'recorded_video', 'model_version_id' => $model->id, 'status' => 'pending', 'config' => [], 'created_by' => $admin->id]);
+    $response = $this->actingAs($admin)->delete(route('video-assets.destroy', $asset));
+    $response->assertSessionHasErrors('video');
+    expect(VideoAsset::find($asset->id)->deleted_at)->toBeNull();
+});
+
+test('delete blocked when linked analysis jobs exist shows error', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'BlockedSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    $asset = VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'blocked.mp4', 'stored_filename' => 'blocked.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    $model = ModelVersion::firstOrCreate(['checksum_sha256' => str_repeat('b', 64)], ['name' => 'yolo11n.pt', 'version' => 'v1', 'weight_filename' => 'yolo11n.pt', 'class_list' => json_encode(['person']), 'license' => 'AGPL-3.0']);
+    AnalysisJob::create(['exam_session_id' => $session->id, 'video_asset_id' => $asset->id, 'source_type' => 'recorded_video', 'model_version_id' => $model->id, 'status' => 'pending', 'config' => [], 'created_by' => $admin->id]);
+    $response = $this->actingAs($admin)->delete(route('video-assets.destroy', $asset));
+    $response->assertSessionHasErrors('video');
+});
+
+test('edit page requires authentication', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $session = ExamSession::create(['name' => 'AuthSession', 'status' => 'pending', 'created_by' => $admin->id]);
+    $asset = VideoAsset::create(['exam_session_id' => $session->id, 'original_filename' => 'auth.mp4', 'stored_filename' => 'auth.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024, 'validation_status' => 'valid', 'uploaded_by' => $admin->id]);
+    $response = $this->get(route('video-assets.edit', $asset));
+    $response->assertRedirect();
+});
+
 test('create job form shows video asset dropdown', function () {
     $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
     $session = ExamSession::create(['name' => 'TestSession6', 'status' => 'pending', 'created_by' => $admin->id]);

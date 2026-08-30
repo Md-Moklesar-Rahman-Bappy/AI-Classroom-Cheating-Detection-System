@@ -88,15 +88,46 @@ class VideoAssetController extends Controller
         return view('video-assets.show', compact('videoAsset'));
     }
 
+    public function edit(VideoAsset $videoAsset)
+    {
+        $sessions = ExamSession::all();
+
+        return view('video-assets.edit', compact('videoAsset', 'sessions'));
+    }
+
+    public function update(Request $request, VideoAsset $videoAsset)
+    {
+        $request->validate([
+            'exam_session_id' => 'required|exists:exam_sessions,id',
+            'original_filename' => 'nullable|string|max:255',
+            'validation_status' => 'nullable|in:pending,valid,invalid',
+        ]);
+        $videoAsset->update([
+            'exam_session_id' => $request->exam_session_id,
+            'original_filename' => $request->original_filename ?? $videoAsset->original_filename,
+            'validation_status' => $request->validation_status ?? $videoAsset->validation_status,
+        ]);
+        AuditHelper::log('video_updated', 'video_asset', (string) $videoAsset->id, 'success');
+
+        return redirect()->route('video-assets.index')->with('success', 'Updated');
+    }
+
     public function destroy(VideoAsset $videoAsset)
     {
         if ($videoAsset->analysisJobs()->exists()) {
-            return back()->withErrors(['video' => 'Cannot delete video with linked jobs']);
+            AuditHelper::log('video_delete_blocked', 'video_asset', (string) $videoAsset->id, 'failure', [
+                'reason' => 'linked_jobs_exist',
+                'linked_count' => $videoAsset->analysisJobs()->count(),
+            ]);
+
+            return back()->withErrors(['video' => 'Cannot delete video with linked jobs (count: '.$videoAsset->analysisJobs()->count().')']);
         }
         $videoAsset->delete();
-        AuditHelper::log('video_deleted', 'video_asset', (string) $videoAsset->id);
+        AuditHelper::log('video_deleted', 'video_asset', (string) $videoAsset->id, 'success', [
+            'filename' => $videoAsset->original_filename,
+        ]);
 
-        return redirect()->route('video-assets.index')->with('success', 'Deleted');
+        return redirect()->route('video-assets.index')->with('success', 'Deleted (soft deleted, recoverable)');
     }
 
     private function cleanAbandoned(): void
