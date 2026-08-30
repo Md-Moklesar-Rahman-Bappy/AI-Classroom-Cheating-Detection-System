@@ -11,12 +11,11 @@
         :root { --sidebar-w: 260px; --sidebar-bg:#0f172a; --sidebar-muted:#94a3b8; --sidebar-active:#1e293b; --card-radius:12px; --card-shadow:0 1px 3px rgba(15,23,42,0.08); --bg:#f8fafc; }
         body { background: var(--bg); font-family: Inter, system-ui, -apple-system, sans-serif; }
         .sidebar { position: fixed; top:0; left:0; width: var(--sidebar-w); height:100vh; background: var(--sidebar-bg); color:#e2e8f0; display:flex; flex-direction:column; z-index:1040; overflow-y:auto; }
-        .sidebar-brand { padding:20px 20px 16px; border-bottom:1px solid #1e293b; }
+        .sidebar-brand { padding:20px 20px 16px; border-bottom:1px solid #1e293b; display:flex; align-items:center; justify-content:space-between; }
         .sidebar-brand .logo { font-weight:700; font-size:16px; color:#fff; letter-spacing:-0.02em; }
         .sidebar-brand .sub { font-size:11px; color:var(--sidebar-muted); letter-spacing:0.06em; text-transform:uppercase; }
-        .sidebar-search { padding:12px 16px; }
-        .sidebar-search input { background:#1e293b; border:1px solid #334155; color:#e2e8f0; font-size:13px; }
-        .sidebar-search input::placeholder { color:#64748b; }
+        .sidebar-close { display:none; background:none; border:none; color:#94a3b8; font-size:18px; }
+        @media (max-width: 991.98px){ .sidebar-close { display:block; } }
         .sidebar-nav { flex:1; padding:8px 12px 12px; }
         .nav-section { margin:16px 0 8px; padding:0 8px; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--sidebar-muted); }
         .nav-link { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; color:#cbd5e1; font-size:14px; text-decoration:none; }
@@ -45,12 +44,7 @@
                 <span class="bg-primary rounded d-flex align-items-center justify-content-center" style="width:28px;height:28px;"><i class="bi bi-shield-lock text-white" style="font-size:14px;"></i></span>
                 <div><div class="logo">AI Classroom</div><div class="sub">Surveillance Platform</div></div>
             </div>
-        </div>
-        <div class="sidebar-search">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text" style="background:#1e293b;border-color:#334155;color:#64748b;"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" placeholder="Search..." disabled>
-            </div>
+            <button class="sidebar-close d-lg-none" onclick="toggleSidebar()" aria-label="Close sidebar"><i class="bi bi-x-lg"></i></button>
         </div>
         <div class="sidebar-nav">
             <div class="nav-section">Overview</div>
@@ -107,10 +101,20 @@
             <div class="ai-notice"><i class="bi bi-shield-exclamation me-2 text-warning"></i><strong>AI Notice:</strong> AI-generated alerts indicate observable events that require human review. An alert is not proof of academic misconduct.</div>
             @yield("content")
         </div>
-        <footer class="border-top bg-white py-3" style="padding-left:24px;padding-right:24px;">
-            <div class="d-flex justify-content-between align-items-center" style="font-size:12px;color:#64748b;">
-                <span>AI Classroom Cheating Detection — v{{ config("app.version","1.0") }} — SOC Monitoring</span>
-                <a href="{{ route("help.index") }}" class="text-decoration-none">Help & Project Notice</a>
+        <footer class="border-top bg-white" style="padding:16px 24px;">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3" style="font-size:12px;color:#64748b;">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="d-flex align-items-center gap-2"><i class="bi bi-shield-lock text-primary"></i> AI Classroom — Surveillance Platform</span>
+                    <span class="d-none d-md-inline text-muted">•</span>
+                    <span>v{{ config("app.version","1.0") }}</span>
+                    <span class="badge bg-light text-dark border" style="font-size:10px;">SOC</span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span>AI alerts require human review — not proof of misconduct</span>
+                    <a href="{{ route("help.index") }}" class="text-decoration-none">Help</a>
+                    <a href="{{ route("audit-logs.index") }}" class="text-decoration-none">Audit</a>
+                    <span class="text-muted">© 2026</span>
+                </div>
             </div>
         </footer>
     </div>
