@@ -1,0 +1,27 @@
+# AI Classroom Cheating Detection System - Python Requirements
+# Generated during Phase 0: Repository Discovery and Environment Audit
+
+# Core AI/Computer Vision
+ultralytics>=8.4.135,<9.0.0  # YOLOv11 AGPL-3.0 licensed; pin version to prevent auto-updates
+fastapi>=0.136.1  # API framework
+uvicorn[standard]>=0.47.0  # ASGI server
+numpy>=1.24.0  # Numerical computing
+opencv-python>=4.10.0.82  # Computer vision
+
+# Supporting libraries
+Pydantic>=2.10.0  # Data validation
+python-multipart>=0.0.6  # Form handling for FastAPI
+psutil>=5.9.0  # System monitoring/memory
+PyYAML>=6.0.1  # Configuration
+
+# Testing and quality
+pytest>=8.0.0  # Testing framework
+ruff>=0.16.5  # Linting
+black>=25.0.0  # Formatting
+
+# Media and streaming
+mediapipe>=1.0.0  # Pose/orientation analysis
+opencv-contrib-python>=4.10.0.82  # Additional CV nodes
+
+# HTTP client (for API communication)
+httpx>=0.28.0  # async HTTP client

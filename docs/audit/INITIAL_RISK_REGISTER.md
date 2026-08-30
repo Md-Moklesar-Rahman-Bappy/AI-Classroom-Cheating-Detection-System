@@ -32,22 +32,27 @@
 
 ### Identified Dependencies & License Concerns
 
-#### Python Dependencies (to be installed)
-- **ultralytics**: License must be verified (typically ROBOTIC-OTS or similar)
+#### Python Dependencies (installed and verified)
+- **ultralytics**: AGPL-3.0 licensed (strong copyleft; see pip metadata). Obligations: derivative works must also be AGPL-3.0; must not auto-select MIT license. Must create THIRD_PARTY_NOTICES.md with full license text. Must document model version, source, and license in MODEL_DOCUMENTATION.md. Recommend pinned version in requirements.txt to prevent automatic updates.
 - **pytest**: MIT licensed (safe)
 - **ruff**: Apache 2.0 licensed (safe)
 - **black**: MIT licensed (safe)
 - **mediapipe**: Apache 2.0 licensed (safe)
-- **bytetrack or deepsort**: Varies; will verify
+- **psutil**: MIT licensed (safe)
 
 #### PHP Dependencies (Laravel)
 - **Laravel Framework**: MIT licensed (safe, with exceptions)
 - **Composer packages**: Varies; will verify each
 
 #### Model License
-- **YOLO pretrained weights**: Ultralytics license terms apply
-- **Must inspect**: license/ directory in ultralytics package
-- **Must not overwrite released model without versioning**
+- **YOLOv11n.pt** (downloaded automatically by ultralytics): Subject to ultralytics AGPL-3.0 terms. Weight file downloaded from https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11n.pt.
+- **Never overwrite released model without versioning** - each model weight version must be checksum-tracked and documented.
+- **License recommendation**: Do not auto-select MIT if dependency obligations conflict. Create THIRD_PARTY_NOTICES.md with AGPL-3.0 compliance statement. Recommend project license compatibility review with legal/supervisor.
+
+### License Conflict Risk (R06) - UPDATED
+- **AGPL-3.0 copyleft** applies to ultralytics package and any derivatives
+- Project must either: (a) comply with AGPL-3.0 terms (source availability for modifications), or (b) negotiate alternative license if MIT/BSD preferred
+- **Mitigation**: Pin ultralytics version in requirements.txt; create THIRD_PARTY_NOTICES.md; document license acceptance; consult supervisor if license terms conflict with open-source project goals
 
 ### Risk Register Status
 - **Created**: Phase 0 commencement

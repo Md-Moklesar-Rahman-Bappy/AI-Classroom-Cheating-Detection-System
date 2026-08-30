@@ -1,0 +1,21 @@
+# AI Classroom Cheating Detection System - Development Requirements
+# Generated during Phase 0: Repository Discovery and Environment Audit
+
+# Testing
+pytest>=8.0.0
+pytest-mock>=3.11.0
+pytest-cov>=5.0.0
+
+# Linting and formatting
+ruff>=0.16.5
+black>=25.0.0
+mypy>=1.8.0
+
+# Configuration and validation
+pydantic>=2.10.0
+
+# Database (if needed for development)
+sqlalchemy>=2.0.0  # Only if independently required
+
+# Type checking
+types-PyYAML>=23.3.0
