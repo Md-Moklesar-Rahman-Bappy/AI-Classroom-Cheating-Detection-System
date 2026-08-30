@@ -8,6 +8,7 @@ use App\Http\Controllers\DetectionEventController;
 use App\Http\Controllers\EvidenceController;
 use App\Http\Controllers\ExamRoomController;
 use App\Http\Controllers\ExamSessionController;
+use App\Http\Controllers\LiveController;
 use App\Http\Controllers\ModelVersionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
@@ -49,6 +50,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('model-versions', ModelVersionController::class);
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('role:system_admin,auditor,exam_admin');
     Route::resource('users', UserController::class)->middleware('role:system_admin');
+    Route::get('live', [LiveController::class, 'index'])->name('live.index')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
+    Route::post('live/start', [LiveController::class, 'start'])->name('live.start')->middleware('role:system_admin,exam_admin,invigilator');
+    Route::get('live/{sessionId}', [LiveController::class, 'show'])->name('live.show')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
+    Route::post('live/{sessionId}/stop', [LiveController::class, 'stop'])->name('live.stop')->middleware('role:system_admin,exam_admin,invigilator');
+    Route::get('live/{sessionId}/health', [LiveController::class, 'health'])->name('live.health')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
+    Route::get('live/{sessionId}/events', [LiveController::class, 'events'])->name('live.events')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
+    Route::get('live/{sessionId}/preview', [LiveController::class, 'preview'])->name('live.preview')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
     Route::get('settings', function () {
         return view('settings.index');
     })->name('settings.index');

@@ -8,6 +8,8 @@ from .api.health import router as health_router
 from .api.health import set_detector
 from .api.jobs import router as jobs_router
 from .api.jobs import set_service as set_jobs_service
+from .api.live import router as live_router
+from .api.live import set_detector as set_live_detector
 from .behaviors.config import BehaviorConfig
 from .config.settings import settings
 from .core.logging import get_logger
@@ -25,6 +27,7 @@ logger = get_logger(__name__)
 app = FastAPI(title=settings.app_name, version=settings.app_version, debug=settings.debug)
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(jobs_router, prefix="/api/v1")
+app.include_router(live_router, prefix="/api/v1")
 
 _detector: UltralyticsDetector | None = None
 _service: RecordedAnalysisService | None = None
@@ -43,11 +46,13 @@ def startup():
             allowed_classes=settings.allowed_classes,
         )
         set_detector(_detector)
+        set_live_detector(_detector)
         logger.info("Detector loaded")
     except Exception as e:
         logger.error(f"Detector failed to load: {e}")
         _detector = None
         set_detector(None)
+        set_live_detector(None)
     try:
         job_repo = InMemoryJobRepository()
         event_repo = InMemoryEventRepository()

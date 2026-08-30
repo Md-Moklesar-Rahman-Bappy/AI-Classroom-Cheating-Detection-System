@@ -179,4 +179,69 @@ class AiServiceClient
 
         return $response->json();
     }
+
+    public function createLiveSession(array $payload, ?string $correlationId = null): array
+    {
+        $correlationId = $correlationId ?? (string) Str::uuid();
+        $response = $this->client($correlationId)->post('/api/v1/live/start', $payload);
+        if ($response->failed()) {
+            $body = $this->redact($response->body());
+            if ($response->status() === 401) {
+                throw new AiServiceException('AI authentication failed', 401);
+            }
+            if ($response->status() === 409) {
+                throw new AiServiceException('Already monitoring: '.$body, 409);
+            }
+            if ($response->status() === 422) {
+                throw new AiServiceException('Invalid live source: '.$body, 422);
+            }
+            throw new AiServiceException('Live start failed: '.$body, $response->status());
+        }
+
+        return $response->json();
+    }
+
+    public function stopLiveSession(string $sessionId, ?string $correlationId = null): array
+    {
+        $correlationId = $correlationId ?? (string) Str::uuid();
+        $response = $this->client($correlationId)->post("/api/v1/live/{$sessionId}/stop");
+        if ($response->failed() && $response->status() !== 404) {
+            throw new AiServiceException($this->redact($response->body()), $response->status());
+        }
+
+        return $response->json() ?? ['session_id' => $sessionId, 'status' => 'stopped'];
+    }
+
+    public function getLiveHealth(string $sessionId, ?string $correlationId = null): array
+    {
+        $correlationId = $correlationId ?? (string) Str::uuid();
+        $response = $this->client($correlationId)->get("/api/v1/live/{$sessionId}/health");
+        if ($response->failed()) {
+            throw new AiServiceException($this->redact($response->body()), $response->status());
+        }
+
+        return $response->json();
+    }
+
+    public function getLiveEvents(string $sessionId, ?string $correlationId = null): array
+    {
+        $correlationId = $correlationId ?? (string) Str::uuid();
+        $response = $this->client($correlationId)->get("/api/v1/live/{$sessionId}/events");
+        if ($response->failed()) {
+            throw new AiServiceException($this->redact($response->body()), $response->status());
+        }
+
+        return $response->json();
+    }
+
+    public function proxyLivePreview(string $sessionId, ?string $correlationId = null)
+    {
+        $correlationId = $correlationId ?? (string) Str::uuid();
+        $response = $this->client($correlationId)->withOptions(['stream' => true])->get("/api/v1/live/{$sessionId}/preview");
+        if ($response->failed()) {
+            throw new AiServiceException($this->redact($response->body()), $response->status());
+        }
+
+        return response($response->body(), 200)->header('Content-Type', $response->header('Content-Type') ?? 'multipart/x-mixed-replace; boundary=frame');
+    }
 }

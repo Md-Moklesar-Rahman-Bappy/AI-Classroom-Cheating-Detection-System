@@ -1,3 +1,13 @@
+## [0.7.0] - 2026-08-30
+### Added
+- Live camera surveillance mode: verified local webcam (device 0, 640x480) and test stream (synthetic), EZVIZ CP1 Lite RTSP/ONVIF/HTTP unverified (documented, not assumed), single-source low-resource limit (409 if already monitoring)
+- Source abstraction: CameraSourceConfig (source_type, identifier, timeout, reconnect 1-30s bounded, frame_timeout 3s), WebcamInput, RtspStreamInput, TestStreamInput, health last-frame timestamp, stop token, guaranteed release, 9 source states (unconfigured/testing/connected/monitoring/reconnecting/degraded/disconnected/stopped/failed)
+- Live processing: shared engine (YOLO11n detector, SimpleCentroidTracker, geometric-v1 orientation, TemporalEventEngine, renderer, evidence, metrics) with start/stop graceful shutdown, reconnect bounded delay, stale-frame detection, duplicate-alert suppression, live metrics (FPS, latency, last_frame_time, reconnect_count), incident evidence, annotated 320x180 preview (not full-res)
+- Dashboard delivery: evaluated MJPEG vs WebSocket vs SSE vs polling ? chose MJPEG (320x180 multipart) + polling fallback (health/events every 2s), separate preview from alert metadata
+- Live UI: camera name, connection/monitoring/session, annotated preview (320x180), processing FPS, alert latency, last frame time, recent events, evidence preview, start/stop controls, degraded/offline warning, credentials never displayed
+- Live API: POST /api/v1/live/start, POST /api/v1/live/{id}/stop (idempotent), GET /health, GET /events, GET /preview (MJPEG), with auth, duplicate start 409, audit start/stop, stop clean release, abnormal termination recorded
+- Tests: 16 AI service (webcam/test, invalid URL, auth, timeout, interruption, stale, stop during reconnect, duplicate, repeated stop, event, evidence, unauthorized, credential redaction, cleanup, crash) + 17 dashboard (webcam/test, invalid, auth, timeout, interruption, stale, stop, duplicate, repeated, event, evidence, unauthorized, preview, redaction, cleanup, crash, recovery) -> 94 dashboard + 16 AI = 110 total
+- Docs: LIVE_SURVEILLANCE_MODE, CAMERA_SETUP, STREAMING_ARCHITECTURE, LIVE_MODE_TEST_REPORT, EZVIZ_CP1_LITE_COMPATIBILITY; updated README, ARCHITECTURE, THREAT_MODEL, SECURITY, TROUBLESHOOTING, CHANGELOG, risk register; EZVIZ live marked unverified, recorded fully operational
 ## [0.6.0] - 2026-08-30
 ### Added
 - AI service integration: typed AiServiceClient (base URL, token, timeout 10s, retry safe GET only, correlation ID X-Correlation-Id, secret redaction, health check), no synchronous AI processing (ProcessAnalysisJob queued, timeout 600)
@@ -55,4 +65,5 @@
 ### Added
 - Phase 1 architecture docs (15 docs), AGPL compliance, THIRD_PARTY_NOTICES
 - Phase 0 audit docs, requirements.txt pinned
+
 

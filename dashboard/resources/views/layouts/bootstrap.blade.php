@@ -60,6 +60,7 @@
             <a class="nav-link {{ request()->routeIs("camera-sources.*") ? "active" : "" }}" href="{{ route("camera-sources.index") }}"><i class="bi bi-camera-video"></i> Cameras</a>
             <a class="nav-link {{ request()->routeIs("video-assets.*") ? "active" : "" }}" href="{{ route("video-assets.index") }}"><i class="bi bi-collection-play"></i> Videos</a>
             <a class="nav-link {{ request()->routeIs("analysis-jobs.*") ? "active" : "" }}" href="{{ route("analysis-jobs.index") }}"><i class="bi bi-cpu"></i> Analysis Jobs</a>
+            <a class="nav-link {{ request()->routeIs("live.*") ? "active" : "" }}" href="{{ route("live.index") }}"><i class="bi bi-broadcast"></i> Live Surveillance</a>
 
             <div class="nav-section">Detection</div>
             <a class="nav-link {{ request()->routeIs("detection-events.*") ? "active" : "" }}" href="{{ route("detection-events.index") }}"><i class="bi bi-activity"></i> Events</a>
