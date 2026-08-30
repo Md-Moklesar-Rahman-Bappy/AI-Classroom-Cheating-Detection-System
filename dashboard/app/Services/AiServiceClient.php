@@ -49,12 +49,9 @@ class AiServiceClient
                 'X-Correlation-Id' => $correlationId,
                 'Accept' => 'application/json',
             ])
-            ->retry($this->retryAttempts, $this->retryDelayMs, function ($exception, $request) {
-                // only retry safe operations (GET, health) and not POST with file
-                $method = $request->method();
-
-                return in_array($method, ['GET']) && $exception instanceof ConnectionException;
-            });
+             ->retry($this->retryAttempts, $this->retryDelayMs, function ($exception, $request) {
+                 return $exception instanceof ConnectionException;
+             });
         if ($this->token && $this->token !== 'dev-token-change-me') {
             $client = $client->withToken($this->token);
         }

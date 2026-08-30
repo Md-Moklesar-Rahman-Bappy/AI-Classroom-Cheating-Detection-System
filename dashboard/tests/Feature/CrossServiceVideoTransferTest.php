@@ -271,3 +271,37 @@ test('existing event/evidence synchronization remains functional', function () {
     expect($job->events()->count())->toBe(0);
     $this->assertTrue(true);
 });
+
+test('health check retry callback does not call invalid PendingRequest::method', function () {
+    Http::fake(['*' => Http::response('', 503)]);
+    $client = new \App\Services\AiServiceClient('http://127.0.0.1:8001', 'test', 1);
+    try {
+        $client->healthCheck((string) \Illuminate\Support\Str::uuid());
+    } catch (\App\Services\AiServiceException $e) {
+        // Expected - health check fails when AI service is down
+        expect(true)->toBeTrue();
+        return;
+    } catch (\Throwable $e) {
+        // Must not be BadMethodCallException for PendingRequest::method
+        expect(get_class($e))->not->toBe('BadMethodCallException');
+        expect($e->getMessage())->not->toContain('PendingRequest::method');
+        return;
+    }
+    $this->fail('Should have thrown AiServiceException');
+});
+
+test('retry callback handles ConnectionException without error', function () {
+    Http::fake(['*' => Http::response('', 503)]);
+    $client = new \App\Services\AiServiceClient('http://127.0.0.1:8001', 'test', 1);
+    try {
+        $client->healthCheck((string) \Illuminate\Support\Str::uuid());
+    } catch (\App\Services\AiServiceException $e) {
+        expect(true)->toBeTrue();
+        return;
+    } catch (\Throwable $e) {
+        expect(get_class($e))->not->toBe('BadMethodCallException');
+        expect($e->getMessage())->not->toContain('PendingRequest::method');
+        return;
+    }
+    $this->fail('Should have thrown AiServiceException');
+});
