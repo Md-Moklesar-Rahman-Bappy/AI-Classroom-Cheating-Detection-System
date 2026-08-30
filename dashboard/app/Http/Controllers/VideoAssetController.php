@@ -13,7 +13,13 @@ class VideoAssetController extends Controller
 {
     public function index()
     {
+        \Illuminate\Support\Facades\Log::info('VideoAsset page index started', [
+            'table' => (new VideoAsset)->getTable(),
+            'connection' => \Illuminate\Support\Facades\DB::connection()->getDatabaseName(),
+            'soft_deletes_trait' => in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses(VideoAsset::class)),
+        ]);
         $assets = VideoAsset::with('session')->latest()->paginate(10);
+        \Illuminate\Support\Facades\Log::info('VideoAsset page index completed', ['count' => $assets->count()]);
 
         return view('video-assets.index', compact('assets'));
     }
