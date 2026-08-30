@@ -221,27 +221,27 @@ def _run_live(session: LiveSession, detector: ObjectDetector):
                         source.close()
                 except Exception:
                     pass
-                if session.stop_token.is_set():
+            if session.stop_token.is_set():
+                break
+            if session.state == SourceState.reconnecting and not session.stop_token.is_set():
+                reconnect_attempt += 1
+                if reconnect_attempt > session.config.reconnect_max_attempts:
+                    session.state = SourceState.failed
+                    session.health = HealthState.unhealthy
                     break
-                if session.state == SourceState.reconnecting and not session.stop_token.is_set():
-                    reconnect_attempt += 1
-                    if reconnect_attempt > session.config.reconnect_max_attempts:
-                        session.state = SourceState.failed
-                        session.health = HealthState.unhealthy
-                        break
-                    delay = _bounded_delay(
-                        reconnect_attempt,
-                        session.config.reconnect_base_delay_ms,
-                        session.config.reconnect_max_delay_ms,
-                    )
-                    session.metrics.reconnect_count += 1
-                    logger.info(
-                        f"reconnecting {session.session_id} attempt {reconnect_attempt} delay {delay}s"
-                    )
-                    time.sleep(delay)
-                elif not session.stop_token.is_set():
-                    session.state = SourceState.disconnected
-                    break
+                delay = _bounded_delay(
+                    reconnect_attempt,
+                    session.config.reconnect_base_delay_ms,
+                    session.config.reconnect_max_delay_ms,
+                )
+                session.metrics.reconnect_count += 1
+                logger.info(
+                    f"reconnecting {session.session_id} attempt {reconnect_attempt} delay {delay}s"
+                )
+                time.sleep(delay)
+            elif not session.stop_token.is_set():
+                session.state = SourceState.disconnected
+                break
 
         session.state = SourceState.stopped if session.stop_token.is_set() else session.state
         if session.state not in (SourceState.failed, SourceState.stopped):
