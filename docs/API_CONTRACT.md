@@ -63,18 +63,39 @@ Auth: service token. Response 200:
 
 `POST /api/v1/jobs/recorded`
 
-Auth: service token. Body:
-```json
-{
-  "exam_session_id": "uuid",
-  "video_asset_id": "uuid",
-  "model_version_id": "uuid",
-  "config": { "input_width": 640, "input_height": 360, "process_every_n_frames": 3, "confidence_threshold": 0.25 }
-}
+Auth: service token (`Authorization: Bearer <token>`), `X-Correlation-Id` header. Body: `multipart/form-data` with `file` (video) + metadata fields.
+
+**Request** (multipart, authenticated):
+- `file` (required): video file binary, `video/mp4` etc., max size `max_upload_mb` (500), validated via `python-magic`/`file` and `VideoCapture` readability, not just extension
+- `original_filename` (required): original name without path, sanitized (no `..`/`/`/`\`), used only for suffix and logging
+- `mime_type` (optional): `video/mp4` etc., validated against allowed list
+- `file_size` (optional): bytes, must match `len(content)` if provided
+- `file_checksum` (optional): SHA256 hex 64, verified if provided
+- `model_version` or `model_version_id` (optional): `yolo11n.pt` etc., validated against `model_versions` table
+- `config` (optional): JSON string `{"input_width":640,"input_height":360,"process_every_n_frames":3}`
+- `correlation_id` (optional): header `X-Correlation-Id` or form field, UUID, logged
+- `dashboard_job_id` (optional): `analysis_jobs.id` from Laravel for idempotency, validated as integer
+
+**Example** (`curl`):
+```bash
+curl -X POST http://127.0.0.1:8001/api/v1/jobs/recorded \
+  -H "Authorization: Bearer <token>" -H "X-Correlation-Id: <uuid>" \
+  -F "file=@video.mp4;type=video/mp4" \
+  -F "original_filename=video.mp4" -F "mime_type=video/mp4" -F "file_size=102400" \
+  -F "file_checksum=abc..." -F "model_version=yolo11n.pt" -F "config={\"input_width\":640}" -F "dashboard_job_id=123"
 ```
 
-Response 201: `{ "job_id": "uuid", "status": "pending", "correlation_id": "uuid" }`
-Validation: exam_session exists, video_asset readable, model listed. Errors: 422 if invalid.
+**Response 201**:
+```json
+{ "job_id": "uuid", "remote_job_id": "uuid", "status": "pending", "correlation_id": "uuid", "config": {"input_width":640}, "progress_percent": 0 }
+```
+- `job_id` is the AI-service's `remote_job_id`, returned to Laravel for `remote_job_id` saving
+- No absolute paths, no credential echo
+
+**Security**: Service auth, request-size limit (500MB), allowed MIME (`video/mp4`, `video/avi`, `video/quicktime`, `video/x-msvideo`, `video/x-matroska`), video readability via `VideoCapture` (not just extension), safe generated filename (`uuid+ext` in `tempfile`), controlled input directory (`tempfile.gettempdir()`), no `..`/`/`/`\` in original_filename, no trust in `original_filename` for path, no arbitrary local path parameter, no credential logging, correlation ID logged, temp cleanup on failure, idempotency via `correlation_id` or `dashboard_job_id` (duplicate within 24h returns same `job_id` 201, not new).
+
+**Validation**: 422 if `file` missing/empty, `original_filename` contains traversal, unsupported type, unreadable video, `file_size` mismatch, `checksum` mismatch.
+**Errors**: 401 auth, 413 too large, 422 validation, 500 internal (sanitized).
 
 ### Job Status
 

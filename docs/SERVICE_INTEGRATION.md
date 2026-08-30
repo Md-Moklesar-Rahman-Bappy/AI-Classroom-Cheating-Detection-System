@@ -1,14 +1,15 @@
 # Service Integration
 
 ## Typed AI Service Client
-- `app/Services/AiServiceClient.php` with typed methods: `healthCheck()`, `createRecordedJob(filePath, originalFilename, correlationId)`, `getJob(jobId, correlationId)`, `getEvents(jobId)`, `getMetrics(jobId)`, `cancelJob(jobId)`, `retryJob(jobId)`
+- `app/Services/AiServiceClient.php` with typed methods: `healthCheck()`, `createRecordedJob(filePath, originalFilename, correlationId, mimeType, fileSize, checksum, modelVersion, config, dashboardJobId)`, `getJob(jobId, correlationId)`, `getEvents(jobId)`, `getMetrics(jobId)`, `cancelJob(jobId)`, `retryJob(jobId)`, `createLiveSession`, `getLiveHealth` etc.
 - Configurable via `config/ai.php` (`AI_SERVICE_BASE_URL` default http://127.0.0.1:8001, `AI_SERVICE_TOKEN` default dev-token-change-me, `AI_SERVICE_TIMEOUT` 10s, `connect_timeout` 5s, `retry_attempts` 2, `retry_delay_ms` 200)
-- Service authentication: `withToken` if token not default, 401 mapped to "AI authentication failed"
-- Timeouts: 10s default, 5s connect, 300s for createRecordedJob (but queued job handles, controller not blocking), retry only safe operations (GET health, getJob) via `retry()` with ConnectionException check, POST with file not retried
-- Correlation ID: `Str::uuid()` per request, sent as `X-Correlation-Id` header, stored in `analysis_jobs.correlation_id`, logged with every AI call
-- Structured error mapping: `AiServiceException` with `statusCode` and `details`, 401? auth, 422? invalid video, 404? not found, 409? conflict, 500? internal, sanitized via `redact()` (removes token/password/secret/key=[REDACTED]), logged via `Log::error` with redacted message
-- Secret redaction: `redact()` replaces `(token|password|secret|key)=...` with `[REDACTED]`, never logs raw token, never exposes in views/API
-- Health check: `GET /api/v1/health` with correlation ID, maps to 503 if unavailable, dashboard route `GET /health/ai` proxies
+- Service authentication: `withToken` if token not default, 401 mapped to "AI authentication failed", `X-Correlation-Id` header per request
+- Timeouts: 10s default, 5s connect, 300s for createRecordedJob (queued job handles, controller not blocking), retry only safe GET (health, getJob) via `retry()` with `ConnectionException` check, POST with file not retried
+- Correlation ID: `Str::uuid()` per request, sent as `X-Correlation-Id` header and as `correlation_id` form field, stored in `analysis_jobs.correlation_id`, logged with every AI call, idempotency via `correlation_id` or `dashboard_job_id`
+- Transfer: **Authenticated multipart** (`file` + `original_filename`, `mime_type`, `file_size`, `file_checksum`, `model_version`, `config` JSON, `correlation_id`, `dashboard_job_id`) via `Http::attach` with **stream** (`fopen($filePath, 'r')` + `Storage::readStream`) not `file_get_contents` (no entire video in memory), stream closed in `finally` (success/failure), no Laravel-relative path or absolute path sent, no credentials, no user-controlled storage path
+- Structured error mapping: `AiServiceException` with `statusCode`, 401 auth, 422 invalid, 404 not found, 409 conflict, 500 internal, sanitized via `redact()` (removes token/password/secret/key=[REDACTED] and `C:\` paths), logged via `Log::error` with redacted, `X-Correlation-Id`
+- Secret redaction: `redact()` replaces `(token|password|secret|key)=...` and `C:\\...` with `[REDACTED]`, never logs raw token or absolute path, never exposes in views/API
+- Health check: `GET /api/v1/health` with correlation ID, maps to 503 if unavailable, dashboard `GET /health/ai` proxies
 
 ## No Synchronous AI Processing
 - `AnalysisJobController@store` creates DB record and dispatches `ProcessAnalysisJob` (ShouldQueue, database queue, timeout 600), returns redirect immediately, no `await` on AI service

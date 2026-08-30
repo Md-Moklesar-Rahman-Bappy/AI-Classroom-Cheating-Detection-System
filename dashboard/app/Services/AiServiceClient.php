@@ -85,16 +85,48 @@ class AiServiceClient
         }
     }
 
-    public function createRecordedJob(string $filePath, string $originalFilename, ?string $correlationId = null): array
+    public function createRecordedJob(string $filePath, string $originalFilename, ?string $correlationId = null, ?string $mimeType = null, ?int $fileSize = null, ?string $checksum = null, ?string $modelVersion = null, ?array $config = null, ?int $dashboardJobId = null): array
     {
         $correlationId = $correlationId ?? (string) Str::uuid();
+        $stream = null;
         try {
+            if (! file_exists($filePath)) {
+                throw new AiServiceException('Local video file not found', 404);
+            }
+            $mimeType = $mimeType ?? mime_content_type($filePath) ?: 'video/mp4';
+            $fileSize = $fileSize ?? filesize($filePath);
+            if ($fileSize === 0) {
+                throw new AiServiceException('Empty file', 422);
+            }
+            if ($checksum === null) {
+                $checksum = hash_file('sha256', $filePath);
+            }
+            $stream = fopen($filePath, 'r');
+            if ($stream === false) {
+                throw new AiServiceException('Failed to open video file', 500);
+            }
             $response = $this->client($correlationId)
-                ->timeout(300) // allow long processing but controller should not wait, queued job will handle
-                ->attach('file', file_get_contents($filePath), $originalFilename)
-                ->post('/api/v1/jobs/recorded');
+                ->timeout(300)
+                ->attach('file', $stream, $originalFilename, ['Content-Type' => $mimeType])
+                ->post('/api/v1/jobs/recorded', [
+                    'original_filename' => $originalFilename,
+                    'mime_type' => $mimeType,
+                    'file_size' => (string) $fileSize,
+                    'file_checksum' => $checksum,
+                    'model_version' => $modelVersion ?? 'yolo11n.pt',
+                    'config' => $config ? json_encode($config) : null,
+                    'correlation_id' => $correlationId,
+                    'dashboard_job_id' => $dashboardJobId ? (string) $dashboardJobId : null,
+                ]);
+            if (is_resource($stream)) {
+                fclose($stream);
+                $stream = null;
+            }
             if ($response->failed()) {
                 $body = $this->redact($response->body());
+                // Also redact paths
+                $body = preg_replace('/[A-Z]:\\\\[^\\s"]+/', '[REDACTED_PATH]', $body) ?? $body;
+                $body = preg_replace('/\/[^\\s"]+\/(storage|video_assets)[^\s"]*/', '[REDACTED_PATH]', $body) ?? $body;
                 Log::warning('AI create job failed', ['correlation_id' => $correlationId, 'status' => $response->status(), 'body' => $body]);
                 if ($response->status() === 401) {
                     throw new AiServiceException('AI authentication failed', 401);
@@ -102,17 +134,27 @@ class AiServiceClient
                 if ($response->status() === 422) {
                     throw new AiServiceException('Invalid video: '.$body, 422);
                 }
+                if ($response->status() === 413) {
+                    throw new AiServiceException('File too large: '.$body, 413);
+                }
                 throw new AiServiceException('AI job creation failed: '.$body, $response->status());
             }
             $data = $response->json();
-            Log::info('AI job created', ['correlation_id' => $correlationId, 'job_id' => $data['job_id'] ?? null]);
+            // Do not log absolute paths
+            Log::info('AI job created', ['correlation_id' => $correlationId, 'job_id' => $data['job_id'] ?? $data['remote_job_id'] ?? null]);
 
             return $data;
         } catch (AiServiceException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            Log::error('AI create job exception', ['correlation_id' => $correlationId, 'error' => $this->redact($e->getMessage())]);
+            $msg = $this->redact($e->getMessage());
+            $msg = preg_replace('/[A-Z]:\\\\[^\\s"]+/', '[REDACTED_PATH]', $msg) ?? $msg;
+            Log::error('AI create job exception', ['correlation_id' => $correlationId, 'error' => $msg]);
             throw new AiServiceException('AI service unavailable during upload', 503, null, $e);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         }
     }
 

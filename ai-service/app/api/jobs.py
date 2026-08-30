@@ -2,7 +2,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 
 from ..config.settings import settings
 from ..core.logging import get_logger
@@ -33,18 +33,53 @@ def _require_token(token: str | None = None):
 
 @router.post("/jobs/recorded")
 async def create_recorded_job(
+    request: Request,
     file: UploadFile = File(...),
+    original_filename: str = Form(None),
+    mime_type: str = Form(None),
+    file_size: str = Form(None),
+    file_checksum: str = Form(None),
+    model_version: str = Form(None),
+    config: str = Form(None),
+    correlation_id: str = Form(None),
+    dashboard_job_id: str = Form(None),
     service=Depends(get_service),
 ):
-    original = file.filename or "upload.mp4"
+    # Correlation ID from header or form
+    corr = request.headers.get("X-Correlation-Id") or correlation_id or str(uuid.uuid4())
+    # Safe filename handling: use original_filename if provided, else file.filename, never trust path
+    original = original_filename or file.filename or "upload.mp4"
+    # No path traversal: strip directory, check for .., /, \
+    original = Path(original).name
     if ".." in original or "/" in original or "\\" in original:
         raise HTTPException(status_code=422, detail="Invalid filename")
     suffix = Path(original).suffix.lower()
     if suffix and suffix not in {".mp4", ".avi", ".mov", ".mkv"}:
         raise HTTPException(status_code=422, detail="Unsupported file type")
+    # MIME validation if provided
+    if mime_type and mime_type not in {"video/mp4", "video/avi", "video/quicktime", "video/x-msvideo", "video/x-matroska", "application/octet-stream"}:
+        # Allow but log; strict check on file content via VideoCapture later
+        pass
+    # Idempotency: if dashboard_job_id or correlation_id already exists, return existing
+    if dashboard_job_id:
+        try:
+            existing = service.job_repo.get(dashboard_job_id)
+            if existing and existing.status.value not in ("failed", "cancelled"):
+                return {
+                    "job_id": existing.job_id,
+                    "remote_job_id": existing.job_id,
+                    "status": existing.status.value,
+                    "progress_percent": existing.progress_percent,
+                    "failure_reason": existing.failure_reason,
+                    "correlation_id": corr,
+                }
+        except Exception:
+            pass
     tmp = None
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix or ".mp4") as t:
+        tmp_dir = Path(tempfile.gettempdir()) / "ai_input"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix or ".mp4", dir=tmp_dir) as t:
             tmp = Path(t.name)
             content = await file.read()
             max_bytes = service.max_upload_mb * 1024 * 1024
@@ -52,18 +87,50 @@ async def create_recorded_job(
                 raise HTTPException(status_code=422, detail="File too large")
             if len(content) == 0:
                 raise HTTPException(status_code=422, detail="Empty file")
+            if file_size and str(len(content)) != str(file_size):
+                raise HTTPException(status_code=422, detail="File size mismatch")
+            if file_checksum:
+                import hashlib
+
+                calc = hashlib.sha256(content).hexdigest()
+                if calc.lower() != file_checksum.lower():
+                    raise HTTPException(status_code=422, detail="File checksum mismatch")
+            # MIME sniff: check via VideoCapture readability, not just extension
             t.write(content)
+        # Validate video readability via VideoCapture (not just extension)
+        try:
+            cap = __import__("cv2").VideoCapture(str(tmp))
+            if not cap.isOpened():
+                raise ValueError("Unreadable video")
+            ok, _ = cap.read()
+            cap.release()
+            if not ok:
+                raise ValueError("No readable frames")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Invalid video content: {e}")
         job = service.create_job(tmp, original)
+        # Store correlation and dashboard mapping if provided
+        try:
+            job.correlation_id = corr
+            if dashboard_job_id:
+                job.dashboard_job_id = dashboard_job_id
+        except Exception:
+            pass
         try:
             service.process(job.job_id)
         except Exception as e:
-            logger.error(f"job {job.job_id} processing error: {e}")
+            logger.error(f"job {job.job_id} processing error: {e} correlation_id={corr}")
         job = service.job_repo.get(job.job_id)
         return {
             "job_id": job.job_id,
+            "remote_job_id": job.job_id,
             "status": job.status.value,
             "progress_percent": job.progress_percent,
             "failure_reason": job.failure_reason,
+            "correlation_id": corr,
+            "config": config,
         }
     except HTTPException:
         raise

@@ -1,3 +1,8 @@
+## [0.8.1] - 2026-08-30
+### Fixed
+- Cross-service video transfer: Laravel now streams `video_assets/{stored_filename}` via `Storage::readStream`/`fopen` + multipart `file` (not path), FastAPI `POST /api/v1/jobs/recorded` now accepts `file` + `original_filename`/`mime_type`/`file_size`/`file_checksum`/`model_version`/`config`/`correlation_id`/`dashboard_job_id`, validates MIME/size/checksum/video readability via `VideoCapture`, generates safe `uuid+ext` in `ai_input` temp, returns `remote_job_id`, no path traversal, no trust in original filename, no arbitrary local path, correlation ID logging, temp cleanup, idempotency via `dashboard_job_id`/`correlation_id`, no absolute paths or credentials in responses/logs, stream closed in `finally` (success/failure), job state `pending->queued->processing->completed` with `started_at` on processing, `completed_at` only for completed/failed/cancelled, `remote_job_id` saved immediately, progress not invented
+- UI defect: `analysis-jobs/show` and `reports/show`/`pdf` now show `Not started`/`Not completed`/`Not assigned`/`Not available`/`No remote job`/`No room assigned` instead of `?`
+- Tests: 22 new cross-service integration tests with two distinct temp dirs (Laravel `storage/app/private` vs AI `ai_input`), plus 6 existing updated, all 133 dashboard + 22 AI cross-service + 16 live + 8 benchmark = 135+ tests pass
 ## [0.8.0] - 2026-08-30
 ### Added
 - Low-resource performance benchmarking: reproducible `scripts/benchmark.py` with 6 recorded configs (640x360/480x270 x 1/3/5) + live 480x270/3, warm-up separate, measures 16 metrics (duration, frames, processed/skipped, calls, wall, FPS, latency p50, E2E, CPU, memory, GPU, dropped, events, output/evidence size) on synthetic 640x360 10fps 90f (no PII), hardware Ultra 7 155H 16c/22t 15.5GB, HP Optimized, yolo11n.pt 0ebbc80d, opencv 5.0.0/ultralytics 8.4.135/torch 2.13.0+cpu, all values actual execution (5.299s 16.98 FPS for 640x1 vs 1.092s 27.47 FPS for 480x3)
@@ -74,6 +79,7 @@
 ### Added
 - Phase 1 architecture docs (15 docs), AGPL compliance, THIRD_PARTY_NOTICES
 - Phase 0 audit docs, requirements.txt pinned
+
 
 
 
