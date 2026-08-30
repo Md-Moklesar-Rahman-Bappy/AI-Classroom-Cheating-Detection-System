@@ -1,0 +1,55 @@
+<?php
+
+use App\Http\Controllers\AnalysisJobController;
+use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\CameraSourceController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DetectionEventController;
+use App\Http\Controllers\EvidenceController;
+use App\Http\Controllers\ExamRoomController;
+use App\Http\Controllers\ExamSessionController;
+use App\Http\Controllers\ModelVersionController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReviewDecisionController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\VideoAssetController;
+use App\Models\ProcessingMetric;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::resource('exam-rooms', ExamRoomController::class);
+    Route::resource('exam-sessions', ExamSessionController::class);
+    Route::resource('camera-sources', CameraSourceController::class);
+    Route::resource('video-assets', VideoAssetController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+    Route::resource('analysis-jobs', AnalysisJobController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+    Route::resource('detection-events', DetectionEventController::class)->only(['index', 'show']);
+    Route::post('detection-events/{detectionEvent}/review', [ReviewDecisionController::class, 'store'])->name('detection-events.review');
+    Route::get('evidence/{evidence}', [EvidenceController::class, 'show'])->name('evidence.show')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');
+    Route::resource('model-versions', ModelVersionController::class);
+    Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('role:system_admin,auditor,exam_admin');
+    Route::resource('users', UserController::class)->middleware('role:system_admin');
+    Route::get('settings', function () {
+        return view('settings.index');
+    })->name('settings.index');
+    Route::get('help', function () {
+        return view('help.index');
+    })->name('help.index');
+    Route::get('metrics', function () {
+        $metrics = ProcessingMetric::with('analysisJob')->paginate(10);
+
+        return view('metrics.index', compact('metrics'));
+    })->name('metrics.index');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+require __DIR__.'/auth.php';

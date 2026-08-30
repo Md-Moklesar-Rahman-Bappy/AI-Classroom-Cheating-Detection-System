@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0] - 2026-08-30
+### Added
+- Laravel 12.68.0 dashboard foundation (PHP 8.2.12, MySQL 10.4.32 MariaDB, Node 24.14.0, npm 11.17.0) with Breeze 2.4.2 Blade, Vite 7.3, Bootstrap 5.3, Chart.js, DataTables native
+- Auth: login/logout/password-reset/email-verification, rate limiting (throttle:5), session regeneration, strong password (8+ letters numbers symbols), no public registration, production-safe seeders (local/testing only)
+- Roles: system_admin, exam_admin, invigilator, reviewer, auditor with RoleMiddleware, server-side policies, authorization matrix
+- 15 modules: Dashboard overview (stats), Exam Rooms CRUD, Exam Sessions CRUD, Camera Sources (encrypted placeholders), Video Assets (upload validation), Analysis Jobs, Detection Events (filter), Evidence (protected, not in public), Review Decisions (confirm/dismiss), Model Versions, Metrics (Chart.js), Audit Logs, Users/Roles, Settings, Help with AI notice
+- Database: 16 tables (roles, permissions, pivot, exam_rooms, exam_sessions, camera_sources, video_assets, analysis_jobs, model_versions, detection_events, event_evidence, review_decisions, processing_metrics, audit_logs, retention_actions) with FKs, indexes, encrypted credentials, safe serialization, factories
+- Evidence protection: storage outside public, authorized controller with role + safe path, audited access, no user-supplied path, traversal blocked
+- Audit logging: AuditHelper logs room/session/camera/video/job/event/review/model/user actions with actor, IP, result, metadata
+- Design System: color tokens, typography, spacing, borders, shadows, buttons, forms, tables, badges, alerts, empty/loading/error, responsive, focus, AI notice (text+color)
+- Tests: 24 new Pest tests (login, rate limiting, session, password reset, roles, unauthorized, room/session/camera/video/job/event/evidence/review/auditor/model/audit/seeder/csrf/validation/direct URL/password/evidence) + Breeze 25 = 49 passed
+- Docs: DESIGN_SYSTEM, UI_COMPONENTS, DASHBOARD_ARCHITECTURE, AUTHORIZATION_MATRIX, DATABASE_IMPLEMENTATION, INSTALLATION_WINDOWS, LOCAL_DEVELOPMENT, DASHBOARD_TEST_REPORT
+
 ## [0.4.0] - 2026-08-30
 ### Added
 - Anonymous tracking: Tracker interface + SimpleCentroidTracker (temporary IDs, no embeddings, max_distance 80, max_missing 10)
