@@ -1,3 +1,6 @@
+## [0.7.1] - 2026-08-30
+### Fixed
+- Model Version dropdown empty on Create Analysis Job: added `is_active` boolean to `model_versions` (migration 2026_08_30_144216), updated `ModelVersion` model with `is_active` cast and `scopeActive`, created `ModelVersionSeeder` for YOLO11 Nano (name YOLO11 Nano, version 1.0, checksum 0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1, is_active true), updated `DatabaseSeeder` to always seed ModelVersion, updated `AnalysisJobController@create` to use `ModelVersion::active()->get()`, ensure fresh install has at least one active model, added 5 tests (dropdown populated, active model available, job creation succeeds, fresh install, inactive not in dropdown) -> 99 tests
 ## [0.7.0] - 2026-08-30
 ### Added
 - Live camera surveillance mode: verified local webcam (device 0, 640x480) and test stream (synthetic), EZVIZ CP1 Lite RTSP/ONVIF/HTTP unverified (documented, not assumed), single-source low-resource limit (409 if already monitoring)
@@ -65,5 +68,6 @@
 ### Added
 - Phase 1 architecture docs (15 docs), AGPL compliance, THIRD_PARTY_NOTICES
 - Phase 0 audit docs, requirements.txt pinned
+
 
 

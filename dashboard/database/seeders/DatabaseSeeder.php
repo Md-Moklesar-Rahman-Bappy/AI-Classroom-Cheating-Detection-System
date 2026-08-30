@@ -8,6 +8,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(ModelVersionSeeder::class);
         if (app()->environment(['local', 'testing'])) {
             $this->call(RolePermissionSeeder::class);
         }

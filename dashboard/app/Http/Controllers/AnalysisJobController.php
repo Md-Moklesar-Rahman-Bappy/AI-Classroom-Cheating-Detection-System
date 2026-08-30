@@ -26,7 +26,7 @@ class AnalysisJobController extends Controller
     public function create()
     {
         $sessions = ExamSession::all();
-        $models = ModelVersion::all();
+        $models = ModelVersion::active()->get();
         $videoAssets = VideoAsset::with('session')->latest()->get();
 
         return view('analysis-jobs.create', compact('sessions', 'models', 'videoAssets'));
@@ -156,6 +156,6 @@ class AnalysisJobController extends Controller
         $analysisJob->delete();
         AuditHelper::log('job_deleted', 'analysis_job', (string) $analysisJob->id);
 
-        return redirect()->route('analysis-jobs.index')->with('success','Deleted');
+        return redirect()->route('analysis-jobs.index')->with('success', 'Deleted');
     }
 }
