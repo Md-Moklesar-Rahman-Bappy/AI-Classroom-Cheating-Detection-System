@@ -63,6 +63,27 @@
 ### Risk Acceptance
 All risks documented with mitigation strategies. High-impact risks (R01, R03, R04, R05, R06, R08) have concrete mitigation plans. Acceptance pending Phase 1 plan consistency check.
 
+### MVP Event Taxonomy (Reduced)
+Project events reduced to Minimum Viable Product set (6 events only; advanced events in roadmap):
+
+- **Person** - Primary subject detection
+- **Mobile Phone** - Prohibited object detection
+- **Looking Left** - Head orientation event (temporal rule)
+- **Looking Right** - Head orientation event (temporal rule)
+- **Looking Back** - Head orientation event (temporal rule)
+- **Leaving Seat** - Movement event (track continuity required)
+
+Explicit state:
+- **Insufficient evidence** - When minimum consecutive observations not met
+
+Advanced events (roadmap, not MVP):
+- Repeated looking left / right (configurable minimum consecutive observations)
+- Leaning toward another desk
+- Potential object exchange
+- Coordinated interaction
+
+Implementation of advanced events deferred until after MVP evaluation is complete and temporal thresholds are tuned on validation data. Single-frame noise does not generate repeated alerts; duplicate-event suppression applied.
+
 ### Next Steps
 1. Verify Python package compatibility (R03)
 2. Test YOLO model license (R06)
