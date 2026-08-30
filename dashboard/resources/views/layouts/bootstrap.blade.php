@@ -22,7 +22,7 @@
         .nav-link:hover { background:var(--sidebar-active); color:#fff; }
         .nav-link.active { background:var(--sidebar-active); color:#fff; border-left:3px solid #0d6efd; }
         .nav-link i { font-size:16px; width:16px; }
-        .sidebar-footer { padding:12px 16px; border-top:1px solid #1e293b; }
+        .sidebar-footer { padding:12px 16px; border-top:1px solid #1e293b; margin-top:auto; }
         .sidebar.collapsed { width:64px; }
         .sidebar.collapsed .nav-section, .sidebar.collapsed .sub, .sidebar.collapsed .nav-link span, .sidebar.collapsed .sidebar-footer .flex-grow-1 { display:none; }
         .sidebar.collapsed .nav-link { justify-content:center; padding:10px; }
@@ -100,6 +100,7 @@
             </div>
             <div class="d-flex align-items-center gap-3">
                 <span class="badge bg-success d-none d-md-inline"><i class="bi bi-circle-fill me-1" style="font-size:8px;"></i> System Operational</span>
+                <form method="POST" action="{{ route("logout") }}" class="d-inline d-lg-none ms-2">@csrf<button class="btn btn-sm btn-outline-danger" aria-label="Logout"><i class="bi bi-box-arrow-right"></i></button></form>
             </div>
         </div>
         <div class="content">
