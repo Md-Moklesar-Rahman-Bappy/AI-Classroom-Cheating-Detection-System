@@ -50,12 +50,17 @@ The MVP event taxonomy separates three categories: detection outputs, behavior e
 
 | Parameter | Default Value | Configurable | Documented | Tuned On |
 |-----------|--------------|--------------|------------|----------|
-| Minimum consecutive observations (behavior events) | 5 | Yes, per-event-rule | Yes, in EVENT_TAXONOMY.md and per-rule config | Validation data |
-| Observation window (frames) | 30 | Yes, per-rule | Yes | Validation data |
-| Cooldown after event end (frames) | 10 | Yes, per-rule | Yes | Validation data |
+| Minimum consecutive observations (behavior events) | 8 (window 15) | Yes, per-event-rule | Yes, in TEMPORAL_EVENT_RULES.md and BEHAVIOR_EVENT_LIMITATIONS.md | Validation data |
+| Observation window (frames) | 15 | Yes, per-rule (`behavior_window_size`) | Yes | Validation data |
+| Cooldown after event end (frames) | 45 | Yes, per-rule (`behavior_cooldown_frames`) | Yes | Validation data |
 | Confidence threshold (detector) | 0.25 | Yes | Yes, in requirements.yaml | Validation data |
 | Mobile phone policy activated | True/False per examination session | Yes, per-session | Yes, in session configuration | Supervisor/invigilator setup |
-| Temporal window (seconds, approximate) | 1.0 per 30 frames @ 30fps | Yes | Yes | Validation data |
+| Temporal window (seconds, approximate) | 1.5 per 15 frames @10fps | Yes | Yes | Validation data |
+| Tracking max distance (px) | 80 | Yes (`tracking_max_distance`) | Yes, TRACKING_DESIGN.md | Validation |
+| Orientation thresholds (left/right/backward) | -0.15/0.15/1.8 | Yes | Yes, ORIENTATION_METHOD.md | Validation |
+| Leaving absence frames | 30 | Yes (`behavior_leaving_absence`) | Yes, TEMPORAL_EVENT_RULES.md | Validation |
+
+Phase 4 actual thresholds: `window_size=15, min_supporting=8, max_missing=4, min_duration=10, cooldown=45, leaving_absence=30, left=-0.15, right=0.15, backward_aspect=1.8`. Recorded per job in `output_metadata.behavior_config` and `metrics.config_version=v1`. Geometric method `geometric-v1`.
 
 All thresholds stored in configuration files; none hard-coded across multiple files. Documented in ARCHITECTURE.md configuration flow.
 

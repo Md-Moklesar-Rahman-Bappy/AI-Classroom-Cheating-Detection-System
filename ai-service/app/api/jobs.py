@@ -139,26 +139,44 @@ def get_events(job_id: str, service=Depends(get_service)):
     job = service.job_repo.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    events = service.event_repo.list_by_job(job_id)
-    return {
-        "job_id": job_id,
-        "total": len(events),
-        "data": [
+    phone_events = service.event_repo.list_by_job(job_id)
+    behavior_events = (
+        service.get_behavior_events(job_id) if hasattr(service, "get_behavior_events") else []
+    )
+    data = [
+        {
+            "event_id": e.event_id,
+            "job_id": e.job_id,
+            "event_type": e.event_type,
+            "frame_number": e.frame_number,
+            "timestamp_seconds": e.timestamp_seconds,
+            "class_id": e.class_id,
+            "class_name": e.class_name,
+            "confidence": e.confidence,
+            "bbox": e.bbox,
+            "requires_review": e.requires_review,
+        }
+        for e in phone_events
+    ]
+    for b in behavior_events:
+        data.append(
             {
-                "event_id": e.event_id,
-                "job_id": e.job_id,
-                "event_type": e.event_type,
-                "frame_number": e.frame_number,
-                "timestamp_seconds": e.timestamp_seconds,
-                "class_id": e.class_id,
-                "class_name": e.class_name,
-                "confidence": e.confidence,
-                "bbox": e.bbox,
-                "requires_review": e.requires_review,
+                "event_id": b.event_id,
+                "job_id": b.job_id,
+                "event_type": b.event_type,
+                "track_id": b.track_id,
+                "start_frame": b.start_frame,
+                "end_frame": b.end_frame,
+                "start_time": b.start_time,
+                "end_time": b.end_time,
+                "observation_count": b.observation_count,
+                "config_version": b.config_version,
+                "method_version": b.method_version,
+                "explanation": b.explanation,
+                "requires_review": b.requires_review,
             }
-            for e in events
-        ],
-    }
+        )
+    return {"job_id": job_id, "total": len(data), "data": data}
 
 
 @router.get("/jobs/{job_id}/metrics")

@@ -99,6 +99,13 @@ Implementation of advanced events deferred until after MVP evaluation is complet
 - Evidence limited to incident JPGs with checksum; cooldown 30 frames suppresses duplicates.
 - Risk carry-forward to Phase 4: R01/R02 (frame skipping still needed, validated on 16GB Ultra 7 155H, torch 2.13.0+cpu, CPU inference), R05 (RTSP placeholder), R08 (no credentials in logs), R13 (debug only in development).
 
+### Phase 4 Verification Results (2026-08-30)
+- Anonymous tracking: SimpleCentroidTracker (80px/10 frames) temporary IDs, no embeddings, verified via 13 fixtures (switching, loss, reappearance, concurrent).
+- Orientation: geometric-v1 (<1ms) evaluated vs MediaPipe/YOLO pose; insufficient -> uncertain; brief 2-frame left no event, 15-frame left emits with explanation.
+- Temporal rules: 5 rules with config_version v1, window15/min8/max4/duration10/cooldown45, leaving_absence30; duplicate suppressed (cooldown 45), missing -> insufficient.
+- Visualization: Green forward, Amber accumulating/uncertain, Red event, Blue phone, Gray insufficient with track ID+state.
+- Evidence best frame per event, not every frame; 56 tests pass (43+13); no invented claims; leaving-seat proxy documented as partially implemented.
+
 ### Next Steps
 1. Phase 2 entry requires Phase 1 docs reviewed and AGPL compliance acknowledged.
 2. Run YOLO inference smoke test and OpenCV video read/write before relying on Python 3.14.

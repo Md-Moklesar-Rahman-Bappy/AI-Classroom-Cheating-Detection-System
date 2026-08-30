@@ -364,3 +364,5 @@ flowchart TD
 | One model instance per worker | Avoids memory pressure from double loading | 8 GB RAM |
 | Frame extraction to temp directory, cleanup after job | Prevents evidence accumulation; storage management | SSD capacity, retention policy |
 | API between Laravel and AI service only | Network isolation; no secrets in dashboard | Security, credential protection |
+| SimpleCentroidTracker baseline (Phase 4) | 80px/10 frames, <1ms, no embeddings, temporary IDs only; ByteTrack/DeepSORT evaluated but deferred for CPU/privacy | CPU, privacy, R01/R02 |
+| Geometric orientation v1 (Phase 4) | bbox delta/aspect, forward/left/right/backward/uncertain/unavailable, quality high/medium/low | CPU, privacy, distance |

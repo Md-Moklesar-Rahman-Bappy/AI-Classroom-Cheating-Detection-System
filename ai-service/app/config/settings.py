@@ -26,6 +26,22 @@ class Settings(BaseSettings):
     event_cooldown_frames: int = 30
     enable_evidence: bool = True
 
+    tracking_max_distance: float = 80.0
+    tracking_max_missing: int = 10
+
+    orientation_left_threshold: float = -0.15
+    orientation_right_threshold: float = 0.15
+    orientation_backward_aspect: float = 1.8
+    orientation_method_version: str = "geometric-v1"
+
+    behavior_window_size: int = 15
+    behavior_min_supporting: int = 8
+    behavior_max_missing: int = 4
+    behavior_min_duration: int = 10
+    behavior_cooldown_frames: int = 45
+    behavior_leaving_absence: int = 30
+    behavior_config_version: str = "v1"
+
     allowed_video_mimes: list[str] = [
         "video/mp4",
         "video/avi",

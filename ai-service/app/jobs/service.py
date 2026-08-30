@@ -6,6 +6,8 @@ from pathlib import Path
 import cv2
 import psutil
 
+from ..behaviors.config import BehaviorConfig
+from ..behaviors.engine import TemporalEventEngine
 from ..core.logging import get_logger
 from ..detection.base import ObjectDetector
 from ..events.repository import EventRepository
@@ -13,7 +15,9 @@ from ..events.rules import MobilePhoneEventRule, create_events_for_detections
 from ..evidence.manager import EvidenceManager
 from ..inputs.recorded import RecordedVideoInput
 from ..inputs.scheduler import FrameScheduler
+from ..orientation.geometric import GeometricOrientationEstimator
 from ..rendering.renderer import BoundingBoxRenderer
+from ..tracking.centroid_tracker import SimpleCentroidTracker
 from .models import AnalysisJob, JobStatus
 from .repository import JobRepository
 
@@ -49,6 +53,13 @@ class RecordedAnalysisService:
         output_dir: str | Path,
         max_upload_mb: int = 500,
         event_cooldown_frames: int = 30,
+        behavior_config: BehaviorConfig | None = None,
+        tracking_max_distance: float = 80.0,
+        tracking_max_missing: int = 10,
+        orientation_left_threshold: float = -0.15,
+        orientation_right_threshold: float = 0.15,
+        orientation_backward_aspect: float = 1.8,
+        orientation_method_version: str = "geometric-v1",
     ):
         self.job_repo = job_repo
         self.event_repo = event_repo
@@ -60,6 +71,14 @@ class RecordedAnalysisService:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.max_upload_mb = max_upload_mb
         self.event_cooldown_frames = event_cooldown_frames
+        self.behavior_config = behavior_config or BehaviorConfig()
+        self.tracking_max_distance = tracking_max_distance
+        self.tracking_max_missing = tracking_max_missing
+        self.orientation_left_threshold = orientation_left_threshold
+        self.orientation_right_threshold = orientation_right_threshold
+        self.orientation_backward_aspect = orientation_backward_aspect
+        self.orientation_method_version = orientation_method_version
+        self.behavior_events: dict[str, list] = {}
 
     def _validate_upload(self, temp_path: Path, original_filename: str) -> None:
         ext = Path(original_filename).suffix.lower()
@@ -141,6 +160,9 @@ class RecordedAnalysisService:
         self.job_repo.create(new_job)
         return new_job
 
+    def get_behavior_events(self, job_id: str) -> list:
+        return self.behavior_events.get(job_id, [])
+
     def process(
         self,
         job_id: str,
@@ -161,6 +183,16 @@ class RecordedAnalysisService:
         sched = FrameScheduler(process_every_n_frames, target_width, target_height)
         renderer = BoundingBoxRenderer()
         rule = MobilePhoneEventRule(cooldown_frames=self.event_cooldown_frames)
+        tracker = SimpleCentroidTracker(
+            max_distance=self.tracking_max_distance, max_missing=self.tracking_max_missing
+        )
+        orientation_estimator = GeometricOrientationEstimator(
+            left_threshold=self.orientation_left_threshold,
+            right_threshold=self.orientation_right_threshold,
+            backward_aspect=self.orientation_backward_aspect,
+            method_version=self.orientation_method_version,
+        )
+        temporal_engine = TemporalEventEngine(self.behavior_config)
         writer = None
         t_start = time.time()
         peak_mem = 0
@@ -171,6 +203,8 @@ class RecordedAnalysisService:
         invocations = 0
         latencies: list[float] = []
         evidence_records: list = []
+        behavior_events_for_job: list = []
+        track_count = 0
 
         try:
             if not self.detector.is_loaded():
@@ -193,6 +227,7 @@ class RecordedAnalysisService:
             if not writer.isOpened():
                 raise RuntimeError("Cannot open output writer")
 
+            all_track_ids: set[int] = set()
             for packet in src.frames():
                 if job.cancel_requested:
                     job.transition(JobStatus.cancelling)
@@ -227,6 +262,56 @@ class RecordedAnalysisService:
                 else:
                     job.progress_percent = 0
 
+                tracks = tracker.update(dets)
+                for tr in tracks:
+                    all_track_ids.add(tr.track_id)
+                track_count = len(all_track_ids)
+
+                observations = []
+                for tr in tracks:
+                    obs = orientation_estimator.estimate(tr, packet.timestamp_seconds)
+                    observations.append(obs)
+
+                current_tids = {tr.track_id for tr in tracks}
+                for obs in observations:
+                    temporal_engine.mark_seen(obs.track_id, packet.frame_index)
+                    evs = temporal_engine.process_observation(obs, packet.frame_index, job.job_id)
+                    for ev in evs:
+                        behavior_events_for_job.append(ev)
+                        job.event_count += 1
+                        if evidence_enabled:
+                            rec = self.evidence_manager.save_snapshot(
+                                frame_proc,
+                                job.job_id,
+                                ev.event_id,
+                                packet.frame_index,
+                                packet.timestamp_seconds,
+                            )
+                            if rec:
+                                evidence_records.append(rec)
+
+                missing_tids = []
+                for tid in list(temporal_engine.leaving_rule.last_seen.keys()):
+                    if tid not in current_tids:
+                        missing_tids.append(tid)
+                if missing_tids:
+                    leaving_evs = temporal_engine.mark_missing_tracks(
+                        missing_tids, packet.frame_index, job.job_id
+                    )
+                    for ev in leaving_evs:
+                        behavior_events_for_job.append(ev)
+                        job.event_count += 1
+                        if evidence_enabled:
+                            rec = self.evidence_manager.save_snapshot(
+                                frame_proc,
+                                job.job_id,
+                                ev.event_id,
+                                packet.frame_index,
+                                packet.timestamp_seconds,
+                            )
+                            if rec:
+                                evidence_records.append(rec)
+
                 phones = rule.should_emit(packet.frame_index, dets)
                 if phones:
                     events = create_events_for_detections(
@@ -249,7 +334,12 @@ class RecordedAnalysisService:
                                 error_count += 1
                     rule.record_emission(packet.frame_index)
 
-                annotated = renderer.render(frame_proc, dets)
+                behavior_for_frame = [
+                    ev for ev in behavior_events_for_job if ev.end_frame == packet.frame_index
+                ]
+                annotated = renderer.render(
+                    frame_proc, dets, tracks, observations, behavior_for_frame
+                )
                 writer.write(annotated)
 
                 try:
@@ -260,6 +350,8 @@ class RecordedAnalysisService:
                 if processed % 10 == 0:
                     self.job_repo.update(job)
 
+            self.behavior_events[job_id] = behavior_events_for_job
+
             if job.status not in (JobStatus.cancelled, JobStatus.cancelling):
                 job.output_path = str(output_path) if writer else None
                 job.output_metadata = {
@@ -269,6 +361,16 @@ class RecordedAnalysisService:
                     "fps": meta.fps,
                     "processed_frames": processed,
                     "checksum": _checksum_file(output_path) if output_path.exists() else None,
+                    "config_version": self.behavior_config.config_version,
+                    "method_version": self.orientation_method_version,
+                    "behavior_config": {
+                        "window_size": self.behavior_config.window_size,
+                        "min_supporting": self.behavior_config.min_supporting,
+                        "max_missing": self.behavior_config.max_missing,
+                        "min_duration_frames": self.behavior_config.min_duration_frames,
+                        "cooldown_frames": self.behavior_config.cooldown_frames,
+                        "leaving_absence_frames": self.behavior_config.leaving_absence_frames,
+                    },
                 }
                 duration = max(0.001, time.time() - t_start)
                 job.metrics = {
@@ -283,6 +385,10 @@ class RecordedAnalysisService:
                     "peak_memory_mb": peak_mem,
                     "error_count": error_count,
                     "event_count": job.event_count,
+                    "track_count": track_count,
+                    "behavior_event_count": len(behavior_events_for_job),
+                    "orientation_method": self.orientation_method_version,
+                    "config_version": self.behavior_config.config_version,
                 }
                 job.progress_percent = 100.0
                 job.transition(JobStatus.completed)

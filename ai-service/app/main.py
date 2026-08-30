@@ -8,6 +8,7 @@ from .api.health import router as health_router
 from .api.health import set_detector
 from .api.jobs import router as jobs_router
 from .api.jobs import set_service as set_jobs_service
+from .behaviors.config import BehaviorConfig
 from .config.settings import settings
 from .core.logging import get_logger
 from .detection.yolo_detector import UltralyticsDetector
@@ -52,6 +53,15 @@ def startup():
         event_repo = InMemoryEventRepository()
         evidence_mgr = EvidenceManager(settings.evidence_dir, enabled=settings.enable_evidence)
         if _detector is not None and _detector.is_loaded():
+            behavior_config = BehaviorConfig(
+                window_size=settings.behavior_window_size,
+                min_supporting=settings.behavior_min_supporting,
+                max_missing=settings.behavior_max_missing,
+                min_duration_frames=settings.behavior_min_duration,
+                cooldown_frames=settings.behavior_cooldown_frames,
+                leaving_absence_frames=settings.behavior_leaving_absence,
+                config_version=settings.behavior_config_version,
+            )
             _service = RecordedAnalysisService(
                 job_repo=job_repo,
                 event_repo=event_repo,
@@ -61,6 +71,13 @@ def startup():
                 output_dir=settings.output_dir,
                 max_upload_mb=settings.max_upload_mb,
                 event_cooldown_frames=settings.event_cooldown_frames,
+                behavior_config=behavior_config,
+                tracking_max_distance=settings.tracking_max_distance,
+                tracking_max_missing=settings.tracking_max_missing,
+                orientation_left_threshold=settings.orientation_left_threshold,
+                orientation_right_threshold=settings.orientation_right_threshold,
+                orientation_backward_aspect=settings.orientation_backward_aspect,
+                orientation_method_version=settings.orientation_method_version,
             )
             set_jobs_service(_service)
             logger.info("Recorded analysis service ready")

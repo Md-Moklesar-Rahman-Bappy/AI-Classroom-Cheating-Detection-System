@@ -20,6 +20,14 @@
 - Evidence JPG only; no video clip 증거; retention active only
 - Bearer token check is configurable but not enforced in tests beyond 401 path; hardening in Phase 9
 
+## Phase 4
+- Tracking is SimpleCentroid (80px/10 frames), not ByteTrack/DeepSORT; ID switch on crossing/occlusion >10 frames
+- Orientation is geometric-v1 (bbox delta/aspect), not MediaPipe/YOLO-pose; coarse, backward via aspect proxy
+- Leaving seat is proxy (track missing 30 frames), not true seat ROI; marked partially implemented
+- No facial recognition, no embeddings; track IDs temporary per job
+- Validated on Python 3.14.3, torch 2.13.0+cpu; geometric <1ms, YOLO 1.29s/frame CPU; no invented FPS
+- Evidence best frame only, no clip yet; behavior events require_review=True
+
 ## Hardware
 - 8GB RAM insufficient for large models; process-every-3 required (Phase 3 now validated on 16GB, still uses every-N)
 - 512GB SSD shared for OS, models, videos, evidence; storage/ evidence dirs auto-created

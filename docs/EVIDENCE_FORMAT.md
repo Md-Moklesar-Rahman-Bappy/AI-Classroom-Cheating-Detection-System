@@ -65,5 +65,32 @@ Fields:
 - Original video stored under `storage/` with safe uuid name; evidence references job, not person identity.
 - API `GET /jobs/{id}/events` returns evidence metadata, not file content; future signed download routes will enforce auth.
 
+## Phase 4 Extension (Temporal Behavior Events)
+```json
+{
+  "event_id": "uuid",
+  "job_id": "uuid",
+  "track_id": 3,
+  "event_type": "Repeated Looking Left",
+  "start_frame": 10,
+  "end_frame": 20,
+  "start_time": 1.0,
+  "end_time": 2.0,
+  "observation_count": 11,
+  "supporting_observations": 9,
+  "missing_observations": 1,
+  "config_version": "v1",
+  "method_version": "geometric-v1",
+  "explanation": "Repeated Looking Left with 11 obs window, min_supporting=8, missing=1",
+  "requires_review": true
+}
+```
+- Best representative frame: frame where rule first met (window end, `end_frame`), not every frame. Evidence snapshot saved at `end_frame` via `EvidenceManager.save_snapshot` with same `evidence_id` link, `job_id`, `frame_number`, `timestamp_seconds`, dimensions, checksum. Optional short clip not yet implemented.
+- Event stores `track_id` (anonymous), `start/end` times, `config_version` and `method_version` for explainability.
+- `GET /jobs/{id}/events` now returns both phone `DetectionEvent` and behavior `BehaviorEvent` merged by `event_type`.
+
 ## Example (Phase 3 run)
 - 6-frame video, phone every 3rd frame with cooldown 30 -> 1 event -> 1 JPG `evidence/<job_id>/<job_id>_<uuid>.jpg` ~10KB, checksum recorded.
+
+## Example (Phase 4 run)
+- 15 frames left with `window 15, min_supporting 8, cooldown 45` -> 1 behavior event at frame 9 -> 1 JPG `evidence/<job_id>/<job_id>_<uuid>.jpg` with behavior `event_id`, plus phone events if any; total evidence limited to events, not frames.
