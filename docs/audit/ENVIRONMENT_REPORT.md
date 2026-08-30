@@ -85,6 +85,12 @@ Critical packages for Phase 2 (Shared AI Foundation) that need installation:
 5. **XAMPP MySQL**: Available but service may need manual start
 6. **No existing git repo**: Will need initialization
 
+### Phase 1 Verification (2026-08-30)
+
+- **CPU verification command**: `Get-CimInstance Win32_Processor | Select Name` -> `Intel(R) Core(TM) i5-14500` (14 cores, 20 logical, Architecture 9, TotalPhysicalMemory 8243363840). Conflicts with earlier "7th Gen U-series" claim; verified model is i5-14500. Do not infer generation.
+- **GPU**: `nvidia-smi` not recognized -> No GPU; CPU-only inference.
+- **Python packages verified**: ultralytics 8.4.135 AGPL-3.0, fastapi 0.136.1, opencv 5.0.0, numpy 2.4.2, pytest 9.1.1, mediapipe 1.0.1, psutil 7.2.2, pydantic 2.13.4, httpx 0.28.1, PyYAML 6.0.3 - all import OK; YOLO inference and OpenCV capture tested.
+
 ### Recommended Next Steps
 1. Initialize git repository
 2. Create virtual environment

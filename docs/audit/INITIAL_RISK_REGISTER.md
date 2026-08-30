@@ -84,9 +84,16 @@ Advanced events (roadmap, not MVP):
 
 Implementation of advanced events deferred until after MVP evaluation is complete and temporal thresholds are tuned on validation data. Single-frame noise does not generate repeated alerts; duplicate-event suppression applied.
 
+### Phase 1 Verification Results (2026-08-30)
+
+- **CPU verification command**: `(Get-CimInstance Win32_Processor).Name` -> `Intel(R) Core(TM) i5-14500` (14 cores, 20 logical, 8243363840 bytes ~8 GB). GPU: `nvidia-smi` not found -> No GPU. Python 3.14.0, ultralytics 8.4.135 AGPL-3.0, fastapi 0.136.1, opencv 5.0.0, numpy 2.4.2 verified via imports.
+- **R03**: Python 3.14 imports OK; ultralytics/fastapi/cv2/numpy/pytest/mediapipe/psutil all import successfully.
+- **R06**: AGPL-3.0 confirmed via `pip show ultralytics`; THIRD_PARTY_NOTICES.md, AGPL_COMPLIANCE.md, LICENSE_DECISION.md created; LICENSE pending review.
+- **Carried-forward risks to Phase 2**: R01 (8GB RAM, frame skipping), R02 (CPU-only), R05 (EZVIZ RTSP unverified, webcam fallback), R08 (credential protection), R13 (debug exposure).
+- **Hardware correction**: Earlier "7th Gen U-series" claim corrected to i5-14500; ENVIRONMENT_REPORT.md to be updated in Phase 1 commit.
+
 ### Next Steps
-1. Verify Python package compatibility (R03)
-2. Test YOLO model license (R06)
-3. Start XAMPP MySQL service (R04)
-4. Test EZVIZ stream accessibility (R05)
-5. Present Phase 1 plan after risk mitigation verification
+1. Phase 2 entry requires Phase 1 docs reviewed and AGPL compliance acknowledged.
+2. Run YOLO inference smoke test and OpenCV video read/write before relying on Python 3.14.
+3. Test EZVIZ stream accessibility via camera-source abstraction.
+4. Start XAMPP MySQL for dashboard foundation (Phase 5).

@@ -165,3 +165,154 @@
   5. System stores source configuration; credentials encrypted; .env entry created (not committed to Git)
   6. User redirected to camera source list; new source appears with "Connect test" button
 - **Alternative flow**: User cancels
+
+### UC-13: Protect Camera Credentials
+
+- **Actor**: System (automated) / Exam Administrator
+- **Preconditions**: Camera source registered (UC-12)
+- **Main success scenario**:
+  1. Credentials encrypted via Laravel encrypt() (AES-256-GCM, APP_KEY) and stored in `camera_sources.credentials_encrypted`
+  2. `.env` excluded from Git; API never returns credential values (only `has_credentials: true/false`)
+  3. Logs redact credential fields; audit logs never include raw secret URLs
+  4. Dashboard UI does not display credentials after saving
+- **Postconditions**: Credentials protected at rest and in transit
+
+### UC-14: Test Connection
+
+- **Actor**: Exam Administrator or Invigilator
+- **Preconditions**: Camera source registered (UC-12)
+- **Main success scenario**:
+  1. User clicks "Test Connection" for source
+  2. System attempts to open stream for 5 seconds
+  3. Result: `connected` or `failed` with reason (timeout, auth failure, unreachable) displayed
+  4. `last_tested_at` updated; audit `camera_connection_tested`
+- **Postconditions**: Source status known before starting monitoring
+
+### UC-15: Start Monitoring
+
+- **Actor**: Invigilator
+- **Preconditions**: Camera tested (UC-14) `connected`; exam session active
+- **Main success scenario**:
+  1. User selects camera source and exam session, clicks "Start Monitoring"
+  2. System creates `analysis_jobs` with `source_type=live_stream`, status `processing`
+  3. Frame capture loop begins; audit `live_monitoring_started`
+- **Postconditions**: Live session running; health metrics available
+
+### UC-16: View System Health
+
+- **Actor**: Invigilator / System Administrator
+- **Preconditions**: Live monitoring active (UC-15)
+- **Main success scenario**:
+  1. Health panel shows: processing FPS, source FPS, detection latency, dropped frames, queue size, reconnect count
+  2. Status indicator: running / degraded / failed
+  3. Polling via `GET /api/v1/live/{session_id}/health`
+- **Postconditions**: Operator has real-time health visibility
+
+### UC-17: View Annotated Preview
+
+- **Actor**: Invigilator
+- **Preconditions**: Live monitoring active
+- **Main success scenario**:
+  1. Dashboard preview shows annotated frames (bounding boxes, track IDs, labels) at configurable preview resolution/fps
+  2. Stale-frame detection: offline indicator if no frame for N seconds
+  3. Stream reconnection handled automatically
+- **Postconditions**: Invigilator sees live annotated feed
+
+### UC-18: Receive Alerts
+
+- **Actor**: Invigilator
+- **Preconditions**: Live monitoring active; temporal rules configured
+- **Main success scenario**:
+  1. When event threshold met, alert appears in live queue with track ID, event type, evidence thumbnail, timestamp
+  2. Delivery via Server-Sent Events, WebSocket, or efficient polling (fallback)
+  3. Alert queue ordered by recency; duplicate suppression via cooldown
+- **Postconditions**: Invigilator notified of suspicious event requiring review
+
+### UC-19: Review Evidence (Live)
+
+- **Actor**: Reviewer / Invigilator
+- **Preconditions**: Alert received (UC-18)
+- **Main success scenario**: Same as UC-9 but for live events; evidence snapshot displayed alongside live feed; reviewer can confirm/dismiss/defer (UC-10)
+- **Postconditions**: Live event has human decision; audit logged
+
+### UC-20: Stop Monitoring
+
+- **Actor**: Invigilator
+- **Preconditions**: Live monitoring active
+- **Main success scenario**:
+  1. User clicks "Stop Monitoring"
+  2. System stops capture loop, releases camera handle, updates job status `completed`
+  3. Audit `live_monitoring_stopped`
+- **Postconditions**: Camera released; no further frames processed
+
+### UC-21: Close Session
+
+- **Actor**: Exam Administrator
+- **Preconditions**: Monitoring stopped (UC-20)
+- **Main success scenario**:
+  1. User clicks "Close Session"; session status `completed`
+  2. System generates session summary prompt (UC-22)
+  3. Audit `exam_session_ended`
+- **Postconditions**: Session closed; no further jobs for session
+
+### UC-22: Generate Summary
+
+- **Actor**: Exam Administrator / Auditor
+- **Preconditions**: Session closed (UC-21)
+- **Main success scenario**:
+  1. System generates summary: total events by type, review decisions, processing metrics, camera health stats
+  2. Exportable as PDF/CSV/JSON (authorization required)
+  3. Audit `report_exported`
+- **Postconditions**: Summary available for institutional review
+
+---
+
+## Security Use Cases
+
+### UC-S1: Unauthorized Evidence Access Is Denied
+
+- **Actor**: Authenticated user without `view_evidence` permission or from different exam session
+- **Preconditions**: Evidence exists for session A; user only authorized for session B
+- **Main success scenario**:
+  1. User attempts `GET /evidence/{id}` or `GET /api/v1/events?exam_session_id=<other_session>`
+  2. System checks server-side authorization (policy)
+  3. Response: 403 Forbidden (or 404 to avoid enumeration), no evidence returned
+  4. Audit `evidence_access_denied` with actor and target
+- **Verification test**: Feature test asserts 403 for cross-session evidence fetch
+
+### UC-S2: Unauthorized Camera Access Is Denied
+
+- **Actor**: Unauthorized role (e.g., auditor) attempts to view or configure camera source
+- **Main success scenario**:
+  1. Auditor attempts `GET /camera_sources` or `POST /camera_sources`
+  2. System denies (403); no credentials exposed
+- **Verification**: Test asserts auditor cannot list cameras
+
+### UC-S3: Auditor Receives Read-Only Access
+
+- **Actor**: Auditor / Read-Only Researcher
+- **Main success scenario**:
+  1. Auditor logs in with auditor role
+  2. Can view sessions, events, evidence, audit logs, metrics, reports
+  3. Cannot create sessions, upload videos, start analysis, review events, export without additional permission, or manage cameras/users
+  4. All write attempts return 403
+- **Verification**: Role permission matrix test
+
+### UC-S4: Credential Values Are Not Exposed
+
+- **Actor**: Any authenticated user
+- **Main success scenario**:
+  1. User fetches `GET /api/camera_sources` or `GET /camera_sources/{id}`
+  2. Response contains `has_credentials: true/false` but no `password`, `credentials_encrypted`, or RTSP URL with embedded credentials
+  3. Logs for camera creation do not contain raw passwords
+- **Verification**: grep API responses and logs for credential patterns returns 0
+
+### UC-S5: Retention Deletion Is Authorized and Audited
+
+- **Actor**: System Administrator or Exam Administrator with `manage_retention` permission
+- **Main success scenario**:
+  1. Authorized user schedules retention deletion for expired video/evidence (creates `retention_actions` with `scheduled`)
+  2. System executes deletion (file overwrite + unlink) and updates `retention_actions` to `executed`
+  3. Audit entry created with actor, target type/id, reason, timestamp
+  4. Unauthorized user attempt -> 403, no deletion, audit `retention_access_denied`
+- **Verification**: Test authorized deletion succeeds and audit exists; unauthorized fails
