@@ -7,6 +7,7 @@ use App\Models\AnalysisJob;
 use App\Models\DetectionEvent;
 use App\Models\EventEvidence;
 use App\Models\ProcessingMetric;
+use App\Models\VideoAsset;
 use App\Services\AiServiceClient;
 use App\Services\AiServiceException;
 use Illuminate\Bus\Queueable;
@@ -40,15 +41,49 @@ class ProcessAnalysisJob implements ShouldQueue
         $correlationId = $this->correlationId ?: (string) Str::uuid();
         $job->update(['correlation_id' => $correlationId, 'status' => 'queued']);
         try {
+            Log::info('ProcessAnalysisJob lookup', [
+                'job_id' => $job->id,
+                'video_asset_id' => $job->video_asset_id,
+                'video_asset_relation_loaded' => $job->relationLoaded('videoAsset') ? 'yes' : 'no',
+                'direct_lookup' => VideoAsset::find($job->video_asset_id) ? 'found' : 'not found',
+            ]);
             $videoAsset = $job->videoAsset;
+            Log::info('ProcessAnalysisJob videoAsset', [
+                'job_id' => $job->id,
+                'video_asset_id' => $job->video_asset_id,
+                'found' => $videoAsset ? 'yes' : 'no',
+                'stored_filename' => $videoAsset?->stored_filename ?? 'null',
+                'lookup_disk' => 'local',
+                'lookup_path' => $videoAsset ? 'video_assets/'.$videoAsset->stored_filename : 'null',
+                'storage_exists' => $videoAsset ? (Storage::disk('local')->exists('video_assets/'.$videoAsset->stored_filename) ? 'true' : 'false') : 'n/a',
+                'absolute_path' => $videoAsset ? Storage::disk('local')->path('video_assets/'.$videoAsset->stored_filename) : 'null',
+            ]);
             if (! $videoAsset) {
-                $job->update(['status' => 'failed', 'failure_reason' => 'Video asset not found', 'failed_at' => now()]);
+                Log::warning('ProcessAnalysisJob failed: Video asset not found', [
+                    'job_id' => $job->id,
+                    'video_asset_id' => $job->video_asset_id,
+                    'all_video_assets_count' => VideoAsset::count(),
+                    'all_video_asset_ids' => VideoAsset::pluck('id')->toArray(),
+                ]);
+                $job->update(['status' => 'failed', 'failure_reason' => 'Video asset not found (id='.$job->video_asset_id.')', 'failed_at' => now()]);
 
                 return;
             }
-            $filePath = Storage::disk('local')->path('video_assets/'.$videoAsset->stored_filename);
-            if (! file_exists($filePath)) {
-                $job->update(['status' => 'failed', 'failure_reason' => 'Video file missing', 'failed_at' => now()]);
+            $lookupDisk = 'local';
+            $lookupPath = 'video_assets/'.$videoAsset->stored_filename;
+            $storageExists = Storage::disk($lookupDisk)->exists($lookupPath);
+            $absolutePath = Storage::disk($lookupDisk)->path($lookupPath);
+            Log::info('ProcessAnalysisJob storage check', [
+                'job_id' => $job->id,
+                'lookup_disk' => $lookupDisk,
+                'lookup_path' => $lookupPath,
+                'storage_exists' => $storageExists ? 'true' : 'false',
+                'absolute_path' => $absolutePath,
+                'file_exists' => file_exists($absolutePath) ? 'true' : 'false',
+            ]);
+            $filePath = $absolutePath;
+            if (! $storageExists || ! file_exists($filePath)) {
+                $job->update(['status' => 'failed', 'failure_reason' => 'Video file missing at '.$lookupPath, 'failed_at' => now()]);
 
                 return;
             }
@@ -209,6 +244,6 @@ class ProcessAnalysisJob implements ShouldQueue
         // Remove secrets, limit length, no stack trace
         $msg = preg_replace("/(token|password|secret|key)=[^&\s]+/i", '$1=[REDACTED]', $msg) ?? $msg;
 
-        return substr($msg,0,500);
+        return substr($msg, 0, 500);
     }
 }

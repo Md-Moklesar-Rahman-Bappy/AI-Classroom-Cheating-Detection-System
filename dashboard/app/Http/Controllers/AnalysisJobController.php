@@ -38,7 +38,7 @@ class AnalysisJobController extends Controller
             'exam_session_id' => 'required|exists:exam_sessions,id',
             'source_type' => 'required|in:recorded_video,live_stream,webcam,test_source',
             'model_version_id' => 'required|exists:model_versions,id',
-            'video_asset_id' => 'nullable|exists:video_assets,id',
+            'video_asset_id' => 'required_if:source_type,recorded_video|nullable|exists:video_assets,id',
         ]);
         // Prevent duplicate submission: same session + video + model within 5 minutes
         $recent = AnalysisJob::where('exam_session_id', $request->exam_session_id)
