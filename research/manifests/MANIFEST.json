@@ -1,0 +1,44 @@
+{
+  "dataset_version": "v0.1.0-synthetic",
+  "created_at": "2026-08-30",
+  "created_by": "ai_classroom_research",
+  "hash": "synthetic-manifest-v1",
+  "approval_reference": "DATA_PLAN.md approved; CONSENT_TEMPLATE.md present; real-data evaluation BLOCKED",
+  "license": "Internal research only; synthetic/non-identifiable; AGPL-3.0 source code",
+  "synthetic": true,
+  "retention_days": 90,
+  "real_data_evaluation_blocked": true,
+  "split_policy": "By session; synthetic/test only; no adjacent-frame leakage",
+  "items": [
+    {
+      "session_id": "syn_001",
+      "participant_code": "P_SYN_01",
+      "resolution": "640x360",
+      "fps": 10,
+      "duration_seconds": 9.0,
+      "lighting": "indoor_uniform",
+      "camera_angle": "front_fixed",
+      "occlusion_level": "none",
+      "scenario_id": "scenario_A",
+      "event_labels": ["person_present"],
+      "annotation_status": "annotated",
+      "split": "test",
+      "consent_reference": "CONSENT_TEMPLATE.md (synthetic; no real participant)",
+      "file_checksum": "3f24d29b154464cd",
+      "license_source": "synthetic_internal",
+      "retention_date": "2026-11-28",
+      "notes": "Synthetic test video; no PII; benchmark manifest asset"
+    }
+  ],
+  "manifest_path": "research/manifests/MANIFEST.md",
+  "governance_docs": [
+    "research/DATASET_CARD.md",
+    "research/DATA_COLLECTION_PROTOCOL.md",
+    "research/ANNOTATION_GUIDE.md",
+    "research/CONSENT_TEMPLATE.md",
+    "research/DATA_RETENTION_POLICY.md",
+    "research/DATASET_VERSIONING.md",
+    "research/DATASET_SPLIT_POLICY.md",
+    "research/QUALITY_CONTROL.md"
+  ]
+}

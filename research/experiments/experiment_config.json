@@ -1,0 +1,14 @@
+{
+  "experiment_id": "exp_baseline_v01",
+  "dataset_version": "v0.1.0-synthetic",
+  "model_family": "yolo11n",
+  "mode": "recorded",
+  "resolution": [640, 360],
+  "interval": 1,
+  "synthetic": true,
+  "real_data_blocked": true,
+  "reproducibility_command": "python research/evaluation/evaluate_objects.py",
+  "seed": "from benchmark_manifest.json",
+  "hardware": "CPU-only",
+  "note": "Synthetic/non-identifiable evaluation only; no real participant data processed."
+}

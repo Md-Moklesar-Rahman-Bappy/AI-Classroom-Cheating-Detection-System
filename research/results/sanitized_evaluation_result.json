@@ -1,0 +1,25 @@
+{
+  "benchmark_version": "v0.1.0-synthetic",
+  "dataset_version": "v0.1.0-synthetic",
+  "real_data_evaluation": "BLOCKED",
+  "synthetic_evaluation": "ACTIVE",
+  "metrics": {
+    "note": "Only actual measured metrics from benchmark execution; no fabricated values",
+    "fps": 10,
+    "resolution": "640x360",
+    "model_family": "yolo11n",
+    "hardware": "CPU-only (Intel i5-14500, 8 GB RAM)"
+  },
+  "limitations": [
+    "Real participant recordings blocked",
+    "Synthetic/non-identifiable test data only",
+    "Small dataset volume",
+    "No GPU",
+    "Class balance may not reflect real exam conditions"
+  ],
+  "reproducibility": {
+    "command": "python research/evaluation/evaluate_objects.py",
+    "seed": "from benchmark_manifest.json",
+    "dataset_manifest": "MANIFEST.md"
+  }
+}

@@ -1,0 +1,21 @@
+# Model Card
+
+- Model ID: `yolo11n_baseline`
+- Model family: YOLOv11
+- Version: `n` (nano)
+- Dataset version: `v0.1.0-synthetic` (synthetic/non-identifiable only; real-data blocked)
+- Classes: `person`, `cell_phone` (COCO 66), temporal behavior events
+- Image size: 640 (configurable to 480)
+- Epochs: as per benchmark manifest
+- Batch size: from benchmark config
+- Optimizer: as per benchmark config
+- Learning rate: as per benchmark config
+- Seed: recorded in benchmark manifest
+- Hardware: CPU-only (Intel i5-14500, 8 GB RAM, no GPU used for current evaluation)
+- Framework versions: `torch 2.13.0+cpu`, `ultralytics 8.4.135`, `opencv 5.0.0`, `psutil 7.2.2`
+- Validation metrics: from `benchmark_results.json`
+- Test metrics: from `benchmark_results.json`
+- Checksum: `0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1`
+- Source/license: `yolo11n.pt` (Ultralytics); AGPL-3.0 source code
+- Creation date: benchmark execution date
+- Note: Real participant evaluation blocked; synthetic/test only.
