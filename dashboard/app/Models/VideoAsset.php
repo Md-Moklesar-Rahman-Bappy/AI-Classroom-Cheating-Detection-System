@@ -17,4 +17,9 @@ class VideoAsset extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
+
+    public function analysisJobs()
+    {
+        return $this->hasMany(AnalysisJob::class, 'video_asset_id');
+    }
 }

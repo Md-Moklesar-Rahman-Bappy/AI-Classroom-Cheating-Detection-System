@@ -10,15 +10,26 @@ use App\Http\Controllers\ExamRoomController;
 use App\Http\Controllers\ExamSessionController;
 use App\Http\Controllers\ModelVersionController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewDecisionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VideoAssetController;
 use App\Models\ProcessingMetric;
+use App\Services\AiServiceClient;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+Route::get('/health/ai', function (AiServiceClient $client) {
+    try {
+        $data = $client->healthCheck();
+
+        return response()->json(['ai_service' => 'ok', 'data' => $data]);
+    } catch (Throwable $e) {
+        return response()->json(['ai_service' => 'unavailable', 'error' => substr($e->getMessage(), 0, 200)], 503);
+    }
+})->name('health.ai');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -27,6 +38,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('camera-sources', CameraSourceController::class);
     Route::resource('video-assets', VideoAssetController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::resource('analysis-jobs', AnalysisJobController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
+    Route::post('analysis-jobs/{analysisJob}/sync', [AnalysisJobController::class, 'sync'])->name('analysis-jobs.sync');
+    Route::post('analysis-jobs/{analysisJob}/cancel', [AnalysisJobController::class, 'cancel'])->name('analysis-jobs.cancel');
+    Route::post('analysis-jobs/{analysisJob}/retry', [AnalysisJobController::class, 'retry'])->name('analysis-jobs.retry');
+    Route::get('analysis-jobs/{analysisJob}/report', [ReportController::class, 'show'])->name('reports.show');
+    Route::get('analysis-jobs/{analysisJob}/report/download', [ReportController::class, 'download'])->name('reports.download');
     Route::resource('detection-events', DetectionEventController::class)->only(['index', 'show']);
     Route::post('detection-events/{detectionEvent}/review', [ReviewDecisionController::class, 'store'])->name('detection-events.review');
     Route::get('evidence/{evidence}', [EvidenceController::class, 'show'])->name('evidence.show')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');

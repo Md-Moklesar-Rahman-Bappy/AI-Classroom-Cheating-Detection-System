@@ -111,3 +111,10 @@ Implementation of advanced events deferred until after MVP evaluation is complet
 2. Run YOLO inference smoke test and OpenCV video read/write before relying on Python 3.14.
 3. Test EZVIZ stream accessibility via camera-source abstraction.
 4. Start XAMPP MySQL for dashboard foundation (Phase 5).
+### Phase 6 Verification Results (2026-08-30)
+- Integration verified: Login?Session?Upload?Job?AI (mocked Http::fake) ? Progress ? Events ? Review ? Audit ? Report (16 tests) -> 65 passed
+- No long-running request: ProcessAnalysisJob queued (database), controller returns immediately with redirect, progress via polling/sync, not invented
+- Evidence protected: storage outside public, auth+role+safe path, audit, no absolute path
+- Duplicate prevention: idempotent event sync via event_id or job+track+type+start_frame, duplicate job submission blocked within 5 min
+- Failure states: AI down (503), timeout (ConnectionException), auth (401) all mapped with secret redaction, job failed/cancelled with retry
+- Report includes disclaimer, not stating AI proves cheating

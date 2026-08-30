@@ -1,3 +1,13 @@
+## [0.6.0] - 2026-08-30
+### Added
+- AI service integration: typed AiServiceClient (base URL, token, timeout 10s, retry safe GET only, correlation ID X-Correlation-Id, secret redaction, health check), no synchronous AI processing (ProcessAnalysisJob queued, timeout 600)
+- Job workflow: upload validated video (MIME/size, uuid storage, outside public, temp cleanup), create dashboard job (pending) with duplicate prevention (5 min window), submit to AI service via multipart, store remote_job_id, poll getJob every 2s (30 attempts), sync progress (not invented), import events idempotently, link evidence via protected copy (ai-service/evidence -> storage/app/evidence), handle failed/cancelled/duplicate/retry, safe retry (new job)
+- Status UI: Pending/Queued/Processing/Cancelling/Cancelled/Failed/Completed with badge text+color, progress bar (remote_progress), processed frames, started/completed, failure sanitized, retry/cancel/sync/report actions, config/model version display, metrics
+- Event sync: deduplication via event_id or idempotent key (job+track+type+start_frame), preserve timestamp, track ID, event type, machine evidence, model/config version, review_status
+- Evidence delivery: Laravel-controlled protected copy (storage outside public, Storage::disk local, evidence/{job_id}/{event_id}.jpg, checksum, no absolute path, auth+role+path traversal check, audited)
+- Human review: reviewer can select confirmed_suspicious/dismissed_normal/needs_further_review with note, creates ReviewDecision append-only, updates DetectionEvent, audit logged
+- Reporting: authorized report with exam session, source mode, job, model version, config, events, human review, metrics, disclaimer "AI-generated alerts indicate observable events that require human review. An alert is not proof of academic misconduct." (HTML/PDF)
+- Tests: 16 new integration tests (e2e, invalid upload, AI down/timeout/auth, duplicate, job failure/cancellation/retry, event duplicate, unauthorized evidence/report, reviewer decision, audit, safe error, no secret) -> total 65 passed
 # Changelog
 
 ## [0.5.0] - 2026-08-30
@@ -45,3 +55,4 @@
 ### Added
 - Phase 1 architecture docs (15 docs), AGPL compliance, THIRD_PARTY_NOTICES
 - Phase 0 audit docs, requirements.txt pinned
+
