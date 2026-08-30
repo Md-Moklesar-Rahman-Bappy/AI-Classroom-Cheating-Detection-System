@@ -1,3 +1,9 @@
+## [0.8.0] - 2026-08-30
+### Added
+- Low-resource performance benchmarking: reproducible `scripts/benchmark.py` with 6 recorded configs (640x360/480x270 x 1/3/5) + live 480x270/3, warm-up separate, measures 16 metrics (duration, frames, processed/skipped, calls, wall, FPS, latency p50, E2E, CPU, memory, GPU, dropped, events, output/evidence size) on synthetic 640x360 10fps 90f (no PII), hardware Ultra 7 155H 16c/22t 15.5GB, HP Optimized, yolo11n.pt 0ebbc80d, opencv 5.0.0/ultralytics 8.4.135/torch 2.13.0+cpu, all values actual execution (5.299s 16.98 FPS for 640x1 vs 1.092s 27.47 FPS for 480x3)
+- Optimization evaluation (13 options individually): lower resolution (640?480 +62% FPS), frame skipping (every 3rd +64% FPS, every 5th +62% but more miss), ROI/pose/thread/queue/model-singleton/alert-only documented, before/after 640x1 16.98?480x3 27.47 FPS (+62%, -79% wall, -60% output) with preserved semantics
+- Low-resource profile `low_resource` (480x270 every 3rd, 27.47 FPS, 1.092s, 25555 B, config_version low_resource_v1) selected evidence-based, ultra-low 480x5 (27.62 FPS, 0.652s) alternative, definitions real-time >=15 FPS, near-real-time 5-15, offline <5 (project), no "real time" claim without definition+measured
+- Docs: BENCHMARK_REPORT, PERFORMANCE_TUNING, LOW_RESOURCE_PROFILE, BENCHMARK_REPRODUCTION, scripts/benchmark.py, research/experiments/benchmark_manifest.json, research/results/benchmark_results.json + low_resource_profile.json (sanitized, no C:\ or token), 8 tests (config, schema, zero-frame, failed source, metrics, comparison, sanitization, profile)
 ## [0.7.1] - 2026-08-30
 ### Fixed
 - Model Version dropdown empty on Create Analysis Job: added `is_active` boolean to `model_versions` (migration 2026_08_30_144216), updated `ModelVersion` model with `is_active` cast and `scopeActive`, created `ModelVersionSeeder` for YOLO11 Nano (name YOLO11 Nano, version 1.0, checksum 0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1, is_active true), updated `DatabaseSeeder` to always seed ModelVersion, updated `AnalysisJobController@create` to use `ModelVersion::active()->get()`, ensure fresh install has at least one active model, added 5 tests (dropdown populated, active model available, job creation succeeds, fresh install, inactive not in dropdown) -> 99 tests
@@ -68,6 +74,7 @@
 ### Added
 - Phase 1 architecture docs (15 docs), AGPL compliance, THIRD_PARTY_NOTICES
 - Phase 0 audit docs, requirements.txt pinned
+
 
 
 

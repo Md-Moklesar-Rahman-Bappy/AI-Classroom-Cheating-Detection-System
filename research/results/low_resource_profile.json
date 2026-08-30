@@ -1,0 +1,33 @@
+{
+    "model_path":  "yolo11n.pt",
+    "evidence_compression":  "incident_only",
+    "definitions":  {
+                        "real_time_target":  "\u003e=15 FPS (project)",
+                        "near_real_time_target":  "5-15 FPS (project)",
+                        "offline_processing":  "\u003c5 FPS (project)"
+                    },
+    "iou":  0.45,
+    "height":  270,
+    "model_singleton":  true,
+    "profile":  "low_resource",
+    "mode":  "recorded",
+    "preview_width":  320,
+    "imgsz":  640,
+    "measured":  {
+                     "output_size_bytes":  25555,
+                     "detector_latency_avg_ms":  33.36,
+                     "source_duration_seconds":  9,
+                     "processed_frames":  30,
+                     "wall_clock_duration_seconds":  1.092,
+                     "hardware":  "Intel Ultra 7 155H 16c/22t 15.5GB",
+                     "source_frames":  90,
+                     "effective_processing_fps":  27.47
+                 },
+    "conf":  0.25,
+    "interval":  3,
+    "process_every_n_frames":  3,
+    "preview_height":  180,
+    "config_version":  "low_resource_v1",
+    "queue_concurrency":  1,
+    "width":  480
+}

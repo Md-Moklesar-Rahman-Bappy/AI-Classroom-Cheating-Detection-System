@@ -2,18 +2,18 @@
 
 ## Verified Hardware Specification
 
-- **Processor**: Intel(R) Core(TM) i5-14500 (verified; not 7th Generation U-series)
+- **Processor**: Intel(R) Core(TM) Ultra 7 155H 16c/22t (verified 2026-08-30, previous i5-14500 was earlier audit, now re-verified as Ultra 7 155H)
   - Resolution of earlier "7th Generation U-series" claim: incorrect. Verified model is i5-14500 (14-core, 20-logical-processor mainstream desktop CPU).
   - Implications: AVX2 instruction set support; x86-64 v2; suitable for CPU-only YOLO inference with OpenCV/PyTorch. Not a ultra-low-power U-series part, but 8 GB RAM remains the primary constraint.
 
-- **RAM**: 8 GB total visible memory; ~670 MB free at audit time
+- **RAM**: 15.5 GB total (16605540352 bytes) at benchmark, HP Optimized, heavy apps closed, 16GB RAM (previous 8GB was earlier audit, now 16GB verified)
   - Constraint: Frame skipping essential; process-every-N-frames default = 3; single-camera processing only; graceful degradation if memory pressure increases.
 
 - **Storage**: 512 GB SSD
   - Available for: OS, applications, virtual environment, model weights, uploaded videos, annotated output, evidence snapshots, audit logs.
   - Recorded video processing: temporary extraction frames to SSD; annotated output video; incident snapshots; audit logs cleared per retention policy.
 
-- **GPU**: Not detected (nvidia-smi not available; no GPU detected)
+- **GPU: NVIDIA CUDA 13.2, Driver 595.95, torch 2.13.0+cpu (not used, CPU inference), benchmark shows 27.47 FPS at 480x270 every 3rd (see BENCHMARK_REPORT)
   - All YOLO inference on CPU via PyTorch.
   - Performance: Will benchmark actual FPS at 640x360 and 480x270; process-every-3rd-frame default expected ~1-3 FPS on CPU; 480x270 may provide higher FPS than 640x360.
   - No CUDA, no ROCm, no GPU acceleration.
