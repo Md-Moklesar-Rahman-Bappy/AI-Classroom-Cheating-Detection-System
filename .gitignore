@@ -26,12 +26,17 @@ __pycache__/
 *.onnx
 
 
-# Phase 2 - generated artifacts
-outputs/
-evidence/
+# Phase 2/3 - generated artifacts
+/outputs/
+ai-service/outputs/
+storage/
+ai-service/storage/
+/evidence/
+ai-service/evidence/
 samples/
 *.mp4
 *.avi
 *.mov
 *.mkv
 .ai-cache/
+.ai-service-cache/

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-08-30
+### Added
+- Recorded video analysis pipeline: AnalysisJob lifecycle (pending/queued/processing/cancelling/cancelled/failed/completed), state machine, RecordedAnalysisService, upload safety (MIME/size/traversal/temp cleanup), output metadata, progress, cancellation, retry, metrics
+- Mobile Phone Detected event with cooldown (30 frames) and duplicate suppression, requires_review=true, evidence manager (limited JPG snapshots with checksum, retention status)
+- FastAPI jobs endpoints: POST /jobs/recorded, GET /jobs/{id}, POST /jobs/{id}/cancel, POST /jobs/{id}/retry, GET /jobs/{id}/events, GET /jobs/{id}/metrics
+- CLI `app.cli` with --input/--output-dir/--model-path/--imgsz/--frame-interval/--conf/--device/--enable-evidence/--json validation
+- Docs: RECORDED_VIDEO_MODE, ANALYSIS_JOB_LIFECYCLE, EVIDENCE_FORMAT, RECORDED_MODE_TEST_REPORT
+- 26 new tests (valid e2e, invalid/empty, cancellation, retry, state transition, detector/writer/evidence failure, suppression, cooldown, no detections, person/phone, traversal, upload validation, temp cleanup, metrics, API lifecycle, CLI)
+
 ## [0.2.0] - 2026-08-30
 ### Added
 - ai-service shared foundation: config, inputs (recorded/webcam/rtsp/test), scheduler, yolo detector, renderer, metrics, health/version

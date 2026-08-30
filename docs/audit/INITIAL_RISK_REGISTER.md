@@ -92,6 +92,13 @@ Implementation of advanced events deferred until after MVP evaluation is complet
 - **Carried-forward risks to Phase 2**: R01 (8GB RAM, frame skipping), R02 (CPU-only), R05 (EZVIZ RTSP unverified, webcam fallback), R08 (credential protection), R13 (debug exposure).
 - **Hardware correction**: Earlier "7th Gen U-series" claim corrected to i5-14500; ENVIRONMENT_REPORT.md to be updated in Phase 1 commit.
 
+### Phase 3 Verification Results (2026-08-30)
+- Jobs pipeline validated: `POST /api/v1/jobs/recorded` -> `GET /jobs/{id}` -> `GET /events` -> `GET /metrics` flow works; cancellation, retry, invalid transitions tested; 43 tests pass (17 Phase2 + 26 Phase3).
+- Upload safety verified: MIME/ext checks, size limit, VideoCapture validation, safe uuid names, traversal prevented, temp cleanup.
+- Metrics use actual measured values only; no invented FPS.
+- Evidence limited to incident JPGs with checksum; cooldown 30 frames suppresses duplicates.
+- Risk carry-forward to Phase 4: R01/R02 (frame skipping still needed, validated on 16GB Ultra 7 155H, torch 2.13.0+cpu, CPU inference), R05 (RTSP placeholder), R08 (no credentials in logs), R13 (debug only in development).
+
 ### Next Steps
 1. Phase 2 entry requires Phase 1 docs reviewed and AGPL compliance acknowledged.
 2. Run YOLO inference smoke test and OpenCV video read/write before relying on Python 3.14.

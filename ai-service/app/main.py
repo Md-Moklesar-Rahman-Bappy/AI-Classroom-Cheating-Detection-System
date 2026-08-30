@@ -6,25 +6,33 @@ from fastapi import FastAPI, HTTPException, Query
 
 from .api.health import router as health_router
 from .api.health import set_detector
+from .api.jobs import router as jobs_router
+from .api.jobs import set_service as set_jobs_service
 from .config.settings import settings
 from .core.logging import get_logger
 from .detection.yolo_detector import UltralyticsDetector
+from .events.repository import InMemoryEventRepository
+from .evidence.manager import EvidenceManager
 from .inputs.recorded import RecordedVideoInput
 from .inputs.scheduler import FrameScheduler
+from .jobs.repository import InMemoryJobRepository
+from .jobs.service import RecordedAnalysisService
 from .metrics.collector import MetricsCollector
 from .rendering.renderer import BoundingBoxRenderer
 
 logger = get_logger(__name__)
 app = FastAPI(title=settings.app_name, version=settings.app_version, debug=settings.debug)
 app.include_router(health_router, prefix="/api/v1")
+app.include_router(jobs_router, prefix="/api/v1")
 
 _detector: UltralyticsDetector | None = None
+_service: RecordedAnalysisService | None = None
 _start_time = time.time()
 
 
 @app.on_event("startup")
 def startup():
-    global _detector
+    global _detector, _service
     try:
         _detector = UltralyticsDetector(
             model_path=settings.model_path,
@@ -39,6 +47,27 @@ def startup():
         logger.error(f"Detector failed to load: {e}")
         _detector = None
         set_detector(None)
+    try:
+        job_repo = InMemoryJobRepository()
+        event_repo = InMemoryEventRepository()
+        evidence_mgr = EvidenceManager(settings.evidence_dir, enabled=settings.enable_evidence)
+        if _detector is not None and _detector.is_loaded():
+            _service = RecordedAnalysisService(
+                job_repo=job_repo,
+                event_repo=event_repo,
+                evidence_manager=evidence_mgr,
+                detector=_detector,
+                storage_dir=settings.storage_dir,
+                output_dir=settings.output_dir,
+                max_upload_mb=settings.max_upload_mb,
+                event_cooldown_frames=settings.event_cooldown_frames,
+            )
+            set_jobs_service(_service)
+            logger.info("Recorded analysis service ready")
+        else:
+            logger.warning("Detector not loaded, job service disabled")
+    except Exception as e:
+        logger.error(f"Failed to init job service: {e}")
 
 
 @app.get("/")
