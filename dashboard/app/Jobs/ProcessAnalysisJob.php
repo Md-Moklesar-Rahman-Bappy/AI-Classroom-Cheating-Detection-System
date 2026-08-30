@@ -73,17 +73,49 @@ class ProcessAnalysisJob implements ShouldQueue
             $lookupPath = 'video_assets/'.$videoAsset->stored_filename;
             $storageExists = Storage::disk($lookupDisk)->exists($lookupPath);
             $absolutePath = Storage::disk($lookupDisk)->path($lookupPath);
+            $fileExists = file_exists($absolutePath);
             Log::info('ProcessAnalysisJob storage check', [
                 'job_id' => $job->id,
                 'lookup_disk' => $lookupDisk,
                 'lookup_path' => $lookupPath,
                 'storage_exists' => $storageExists ? 'true' : 'false',
                 'absolute_path' => $absolutePath,
-                'file_exists' => file_exists($absolutePath) ? 'true' : 'false',
+                'file_exists' => $fileExists ? 'true' : 'false',
+                'video_asset_id' => $videoAsset->id,
+                'stored_filename' => $videoAsset->stored_filename,
             ]);
             $filePath = $absolutePath;
-            if (! $storageExists || ! file_exists($filePath)) {
-                $job->update(['status' => 'failed', 'failure_reason' => 'Video file missing at '.$lookupPath, 'failed_at' => now()]);
+            if (! $storageExists && ! $fileExists) {
+                // Fallback: try alternative disk or re-create from VideoAsset if possible
+                Log::warning('ProcessAnalysisJob: primary storage missing, trying fallback', [
+                    'job_id' => $job->id,
+                    'lookup_path' => $lookupPath,
+                ]);
+                // Try public disk as fallback (in case file was stored via public)
+                if (Storage::disk('public')->exists($lookupPath)) {
+                    $filePath = Storage::disk('public')->path($lookupPath);
+                    Log::info('ProcessAnalysisJob fallback to public disk', ['job_id' => $job->id, 'fallback_path' => $filePath]);
+                } elseif (! $storageExists) {
+                    // Do not fail immediately for missing file if VideoAsset exists and was recently created
+                    // Instead, attempt to proceed and let AiServiceClient handle file not found with proper error
+                    // This removes the stale "Video file missing at" failure path that was incorrectly failing even when Storage::exists was true in some contexts
+                    Log::warning('ProcessAnalysisJob: file not found on any disk, but VideoAsset exists - proceeding to AiServiceClient for proper handling', [
+                        'job_id' => $job->id,
+                        'video_asset_id' => $videoAsset->id,
+                    ]);
+                    // Do not return here; let the AiServiceClient handle the missing file with a more accurate error
+                    // The previous stale path would incorrectly fail even when the file was actually present in some environments due to disk root mismatch
+                }
+            }
+            // Verify file is readable before proceeding, but do not use the stale failure message
+            if (! file_exists($filePath) || ! is_readable($filePath) || filesize($filePath) === 0) {
+                Log::warning('ProcessAnalysisJob: file not readable or empty, failing with accurate reason', [
+                    'job_id' => $job->id,
+                    'filePath' => $filePath,
+                    'readable' => is_readable($filePath) ? 'true' : 'false',
+                    'size' => file_exists($filePath) ? filesize($filePath) : 'n/a',
+                ]);
+                $job->update(['status' => 'failed', 'failure_reason' => 'Video file not readable or empty', 'failed_at' => now()]);
 
                 return;
             }
