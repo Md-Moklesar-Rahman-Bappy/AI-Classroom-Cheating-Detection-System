@@ -72,6 +72,17 @@ class UserController extends Controller
         if (! auth()->user()->hasRole('system_admin')) {
             abort(403);
         }
+        if ($user->hasRole('system_admin')) {
+            $adminCount = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->count();
+            if ($adminCount <= 1) {
+                AuditHelper::log('user.delete_blocked', 'user', (string) $user->id, 'failure', ['reason' => 'last_system_admin']);
+
+                return redirect()->route('users.index')->withErrors(['user' => 'Cannot delete the last active System Administrator. Assign another administrator first.']);
+            }
+            if ($user->id === auth()->id() && $adminCount <= 1) {
+                return redirect()->route('users.index')->withErrors(['user' => 'You cannot delete your own account as the last System Administrator.']);
+            }
+        }
         $user->delete();
         AuditHelper::log('user_deleted', 'user', (string) $user->id);
 
