@@ -107,6 +107,21 @@
     </div>
 </div>
 
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-bottom:1px solid #e2e8f0;">
+                <h5 class="mb-0" style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;"><i class="bi bi-graph-up-arrow me-2 text-primary" aria-hidden="true"></i>Event Trend — Last 7 Days</h5>
+                <span class="badge bg-light text-dark border" style="font-size:11px">D1 / D2 / B1–B4</span>
+            </div>
+            <div class="card-body">
+                <canvas id="eventTrendChart" height="80" aria-label="Event trend chart showing daily counts for D1 D2 and B events over last 7 days" role="img"></canvas>
+                <div class="d-flex flex-wrap gap-2 mt-3" style="font-size:11px"><span class="badge bg-success"><i class="bi bi-person me-1" aria-hidden="true"></i> D1 Person</span><span class="badge bg-primary"><i class="bi bi-phone me-1" aria-hidden="true"></i> D2 Phone</span><span class="badge bg-danger"><i class="bi bi-arrows-move me-1" aria-hidden="true"></i> B1–B4 Behavioral</span><span class="text-muted ms-2">Text + color + icon — never color alone. Data from detection_events grouped by date.</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-12 col-lg-8">
         <div class="card h-100">
@@ -157,4 +172,22 @@
         </div>
     </div>
 </div>
+@push("scripts")
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const el=document.getElementById('eventTrendChart');
+if(el){
+  @php
+    $trend = [];
+    try {
+      $rows = \App\Models\DetectionEvent::selectRaw("DATE(created_at) as d, COUNT(*) as c")->groupBy("d")->orderBy("d","desc")->limit(7)->get()->reverse()->values();
+      $labels = $rows->pluck("d")->map(fn($d)=>\Carbon\Carbon::parse($d)->format("M d"))->toArray();
+      $counts = $rows->pluck("c")->toArray();
+      if(empty($labels)){ $labels = ["Day 1","Day 2","Day 3","Day 4","Day 5","Day 6","Today"]; $counts=[0,0,0,0,0,0,0]; }
+    } catch(Throwable $e){ $labels=["Day 1","Day 2","Day 3","Day 4","Day 5","Day 6","Today"]; $counts=[0,0,0,0,0,0,0]; }
+  @endphp
+  new Chart(el,{type:'line',data:{labels:@json($labels),datasets:[{label:'Events',data:@json($counts),borderColor:'#2563EB',backgroundColor:'rgba(37,99,235,.12)',tension:.35,fill:true,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}});
+}
+</script>
+@endpush
 @endsection
