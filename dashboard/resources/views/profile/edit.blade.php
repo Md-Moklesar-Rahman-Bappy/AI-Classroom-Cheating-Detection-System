@@ -99,7 +99,7 @@ $isVerified = !is_null($user->email_verified_at);
 <label for="update_password_current_password" class="form-label" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#64748B;font-weight:600">Current Password</label>
 <div class="input-group">
 <input id="update_password_current_password" name="current_password" type="password" class="form-control" autocomplete="current-password" placeholder="••••••••">
-<button class="btn btn-outline-secondary" type="button" onclick="togglePwd('update_password_current_password',this)" aria-label="Toggle current password"><i class="bi bi-eye"></i></button>
+<button class="btn btn-outline-secondary" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePwd('update_password_current_password',this)"><i class="bi bi-eye" aria-hidden="true"></i></button>
 </div>
 @error('current_password','updatePassword')<div class="text-danger mt-1" style="font-size:12px"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
 </div>
@@ -107,7 +107,7 @@ $isVerified = !is_null($user->email_verified_at);
 <label for="update_password_password" class="form-label" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#64748B;font-weight:600">New Password</label>
 <div class="input-group">
 <input id="update_password_password" name="password" type="password" class="form-control" autocomplete="new-password" placeholder="••••••••">
-<button class="btn btn-outline-secondary" type="button" onclick="togglePwd('update_password_password',this)" aria-label="Toggle new password"><i class="bi bi-eye"></i></button>
+<button class="btn btn-outline-secondary" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePwd('update_password_password',this)"><i class="bi bi-eye" aria-hidden="true"></i></button>
 </div>
 @error('password','updatePassword')<div class="text-danger mt-1" style="font-size:12px"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
 </div>
@@ -115,7 +115,7 @@ $isVerified = !is_null($user->email_verified_at);
 <label for="update_password_password_confirmation" class="form-label" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#64748B;font-weight:600">Confirm Password</label>
 <div class="input-group">
 <input id="update_password_password_confirmation" name="password_confirmation" type="password" class="form-control" autocomplete="new-password" placeholder="••••••••">
-<button class="btn btn-outline-secondary" type="button" onclick="togglePwd('update_password_password_confirmation',this)" aria-label="Toggle confirm password"><i class="bi bi-eye"></i></button>
+<button class="btn btn-outline-secondary" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePwd('update_password_password_confirmation',this)"><i class="bi bi-eye" aria-hidden="true"></i></button>
 </div>
 @error('password_confirmation','updatePassword')<div class="text-danger mt-1" style="font-size:12px"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
 </div>
@@ -147,7 +147,7 @@ $isVerified = !is_null($user->email_verified_at);
 <label for="delete_password" class="form-label" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#64748B;font-weight:600">Password</label>
 <div class="input-group">
 <input id="delete_password" name="password" type="password" class="form-control" placeholder="Password">
-<button class="btn btn-outline-secondary" type="button" onclick="togglePwd('delete_password',this)" aria-label="Toggle password"><i class="bi bi-eye"></i></button>
+<button class="btn btn-outline-secondary" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePwd('delete_password',this)"><i class="bi bi-eye" aria-hidden="true"></i></button>
 </div>
 @error('password','userDeletion')<div class="text-danger mt-1" style="font-size:12px"><i class="bi bi-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
 </div>
@@ -161,7 +161,7 @@ $isVerified = !is_null($user->email_verified_at);
 </div>
 @push("scripts")
 <script>
-function togglePwd(id,btn){const i=document.getElementById(id);if(!i)return;const icon=btn.querySelector('i');const isPwd=i.type==='password';i.type=isPwd?'text':'password';icon.className=isPwd?'bi bi-eye-slash':'bi bi-eye'}
+function togglePwd(id,btn){const i=document.getElementById(id);if(!i)return;const icon=btn.querySelector('i');const isPwd=i.type==='password';i.type=isPwd?'text':'password';icon.className=isPwd?'bi bi-eye-slash':'bi bi-eye';btn.setAttribute('aria-label',isPwd?'Hide password':'Show password');btn.setAttribute('aria-pressed',isPwd?'true':'false')}
 @if($errors->userDeletion->isNotEmpty())
 document.addEventListener('DOMContentLoaded',()=>{const m=new bootstrap.Modal(document.getElementById('confirmDeleteModal'));m.show()})
 @endif

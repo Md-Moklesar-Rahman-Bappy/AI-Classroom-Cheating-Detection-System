@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\AuditHelper;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,6 +49,17 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        if ($user->hasRole('system_admin')) {
+            $adminCount = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->count();
+            if ($adminCount <= 1) {
+                AuditHelper::log('profile.delete_blocked', 'user', (string) $user->id, 'failure', ['reason' => 'last_system_admin']);
+
+                return Redirect::route('profile.edit')->withErrors(['password' => 'Cannot delete the last active System Administrator account. Assign another administrator first.'], 'userDeletion');
+            }
+        }
+
+        AuditHelper::log('profile.delete', 'user', (string) $user->id, 'success', ['email' => $user->email]);
 
         Auth::logout();
 
