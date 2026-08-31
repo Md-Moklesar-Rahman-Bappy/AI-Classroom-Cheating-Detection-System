@@ -57,7 +57,14 @@ async def create_recorded_job(
     if suffix and suffix not in {".mp4", ".avi", ".mov", ".mkv"}:
         raise HTTPException(status_code=422, detail="Unsupported file type")
     # MIME validation if provided
-    if mime_type and mime_type not in {"video/mp4", "video/avi", "video/quicktime", "video/x-msvideo", "video/x-matroska", "application/octet-stream"}:
+    if mime_type and mime_type not in {
+        "video/mp4",
+        "video/avi",
+        "video/quicktime",
+        "video/x-msvideo",
+        "video/x-matroska",
+        "application/octet-stream",
+    }:
         # Allow but log; strict check on file content via VideoCapture later
         pass
     # Idempotency: if dashboard_job_id or correlation_id already exists, return existing

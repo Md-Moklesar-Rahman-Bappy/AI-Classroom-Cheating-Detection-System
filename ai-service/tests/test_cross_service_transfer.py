@@ -1,11 +1,9 @@
-import hashlib
 import tempfile
 import time
 from pathlib import Path
 
 import cv2
 import numpy as np
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -46,7 +44,11 @@ def test_multipart_transfer_succeeds():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}, data={"original_filename": "test.mp4"})
+                resp = client.post(
+                    "/api/v1/jobs/recorded",
+                    files={"file": ("test.mp4", f, "video/mp4")},
+                    data={"original_filename": "test.mp4"},
+                )
             assert resp.status_code in (200, 201)
             data = resp.json()
             assert "job_id" in data
@@ -62,7 +64,9 @@ def test_fastapi_creates_safe_temporary_input():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("myvideo.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("myvideo.mp4", f, "video/mp4")}
+                )
             assert resp.status_code in (200, 201)
             # Check that response does not contain absolute path
             assert "C:\\" not in resp.text
@@ -81,7 +85,9 @@ def test_remote_job_id_returned():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}
+                )
             assert resp.status_code in (200, 201)
             data = resp.json()
             assert "job_id" in data
@@ -99,7 +105,11 @@ def test_laravel_saves_remote_job_id():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}, data={"dashboard_job_id": "123"})
+                resp = client.post(
+                    "/api/v1/jobs/recorded",
+                    files={"file": ("test.mp4", f, "video/mp4")},
+                    data={"dashboard_job_id": "123"},
+                )
             assert resp.status_code in (200, 201)
             # Check that correlation_id is returned
             assert "correlation_id" in resp.json() or "job_id" in resp.json()
@@ -114,7 +124,9 @@ def test_status_advances_beyond_queued():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}
+                )
             job_id = resp.json()["job_id"]
             # Poll
             for _ in range(5):
@@ -136,7 +148,9 @@ def test_valid_mp4_accepted():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("valid.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("valid.mp4", f, "video/mp4")}
+                )
             assert resp.status_code in (200, 201)
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -149,7 +163,9 @@ def test_invalid_mime_rejected():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("bad.txt", f, "text/plain")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("bad.txt", f, "text/plain")}
+                )
             assert resp.status_code == 422
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -163,7 +179,9 @@ def test_fake_extension_rejected():
         try:
             with open(tmp_path, "rb") as f:
                 # Even with mp4 extension, content is not a valid video, should be rejected via VideoCapture check
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("fake.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("fake.mp4", f, "video/mp4")}
+                )
             # It may be 422 or 200 depending on how strict the check is, but we test that it doesn't crash
             assert resp.status_code in (200, 201, 422)
         finally:
@@ -181,7 +199,9 @@ def test_oversized_upload_rejected():
             # To test oversized, we would need a >500MB file, which is not practical
             # Instead, we test that a normal file is accepted, and that the size check exists
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("valid.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("valid.mp4", f, "video/mp4")}
+                )
             assert resp.status_code in (200, 201)
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -194,7 +214,9 @@ def test_corrupted_video_rejected():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("corrupted.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("corrupted.mp4", f, "video/mp4")}
+                )
             assert resp.status_code == 422
         finally:
             tmp_path.unlink(missing_ok=True)
@@ -207,7 +229,11 @@ def test_traversal_filename_neutralized():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("../traversal.mp4", f, "video/mp4")}, data={"original_filename": "../traversal.mp4"})
+                resp = client.post(
+                    "/api/v1/jobs/recorded",
+                    files={"file": ("../traversal.mp4", f, "video/mp4")},
+                    data={"original_filename": "../traversal.mp4"},
+                )
             # Should be 422 or sanitized to traversal.mp4
             assert resp.status_code in (200, 201, 422)
             if resp.status_code in (200, 201):
@@ -223,10 +249,18 @@ def test_duplicate_request_idempotent():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp1 = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}, data={"dashboard_job_id": "99999"})
+                resp1 = client.post(
+                    "/api/v1/jobs/recorded",
+                    files={"file": ("test.mp4", f, "video/mp4")},
+                    data={"dashboard_job_id": "99999"},
+                )
             job_id1 = resp1.json().get("job_id") if resp1.status_code in (200, 201) else None
             with open(tmp_path, "rb") as f:
-                resp2 = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}, data={"dashboard_job_id": "99999"})
+                resp2 = client.post(
+                    "/api/v1/jobs/recorded",
+                    files={"file": ("test.mp4", f, "video/mp4")},
+                    data={"dashboard_job_id": "99999"},
+                )
             # Second request with same dashboard_job_id should be idempotent or safely rejected (201 with same id or 422)
             assert resp2.status_code in (200, 201, 422, 409)
             if resp2.status_code in (200, 201) and job_id1:
@@ -261,7 +295,9 @@ def test_partial_upload_cleans_temporary_files():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("partial.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("partial.mp4", f, "video/mp4")}
+                )
             # After request, temp file should be cleaned (deleted in finally)
             # Check that no new temp files remain in ai_input
             after = set(glob.glob(str(tmpdir / "*.mp4"))) if tmpdir.exists() else set()
@@ -279,7 +315,9 @@ def test_laravel_stream_closes_after_success():
         try:
             with open(tmp_path, "rb") as f:
                 assert not f.closed
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}
+                )
                 assert resp.status_code in (200, 201)
                 # File should still be open during request, but closed after
                 # We can't check the client's stream, but we can verify the response
@@ -296,7 +334,9 @@ def test_laravel_stream_closes_after_failure():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("bad.txt", f, "text/plain")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("bad.txt", f, "text/plain")}
+                )
                 assert resp.status_code == 422
                 assert f.closed or True  # Should be closed
         finally:
@@ -310,7 +350,9 @@ def test_no_absolute_path_in_response():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}
+                )
             assert "C:\\" not in resp.text
             assert "/tmp/" not in resp.text or "tmp" in resp.text.lower()
             assert "xampp" not in resp.text.lower()
@@ -336,7 +378,9 @@ def test_existing_event_sync_remains_functional():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post("/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")})
+                resp = client.post(
+                    "/api/v1/jobs/recorded", files={"file": ("test.mp4", f, "video/mp4")}
+                )
             job_id = resp.json()["job_id"]
             resp = client.get(f"/api/v1/jobs/{job_id}/events")
             assert resp.status_code == 200

@@ -13,27 +13,7 @@ class VideoAssetController extends Controller
 {
     public function index()
     {
-        $queries = [];
-        \Illuminate\Support\Facades\DB::listen(function ($query) use (&$queries) {
-            $queries[] = [
-                'sql' => $query->sql,
-                'bindings' => $query->bindings,
-                'time_ms' => $query->time,
-                'table_hint' => (str_contains($query->sql, 'video_assets') ? 'video_assets' : 'other'),
-            ];
-        });
-
-        \Illuminate\Support\Facades\Log::info('VideoAsset page index started', [
-            'table' => (new VideoAsset)->getTable(),
-            'connection' => \Illuminate\Support\Facades\DB::connection()->getDatabaseName(),
-            'soft_deletes_trait' => in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses(VideoAsset::class)),
-        ]);
         $assets = VideoAsset::with('session')->latest()->paginate(10);
-        \Illuminate\Support\Facades\Log::info('VideoAsset page index completed', [
-            'count' => $assets->count(),
-            'queries_executed' => count($queries),
-            'queries' => $queries,
-        ]);
 
         return view('video-assets.index', compact('assets'));
     }

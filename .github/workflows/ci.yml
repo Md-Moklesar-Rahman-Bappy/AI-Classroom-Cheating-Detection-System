@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  laravel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Install PHP deps
+        working-directory: dashboard
+        run: composer install --prefer-dist --no-progress --no-interaction --audit
+      - name: Composer validate
+        working-directory: dashboard
+        run: composer validate --strict
+      - name: Pint
+        working-directory: dashboard
+        run: vendor/bin/pint --test
+      - name: Setup env
+        working-directory: dashboard
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Migrate and test
+        working-directory: dashboard
+        run: |
+          php artisan migrate --force
+          vendor/bin/pest --compact
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Build assets
+        working-directory: dashboard
+        run: |
+          npm ci
+          npm run build
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        working-directory: ai-service
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install python-multipart
+      - name: Ruff check
+        working-directory: ai-service
+        run: ruff check .
+      - name: Black check
+        working-directory: ai-service
+        run: black --check .
+      - name: Pytest (lightweight, no model download)
+        working-directory: ai-service
+        run: python -m pytest tests/test_config.py tests/test_inputs.py tests/test_tracking_orientation.py -q

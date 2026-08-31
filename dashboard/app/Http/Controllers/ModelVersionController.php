@@ -56,6 +56,6 @@ class ModelVersionController extends Controller
         $modelVersion->delete();
         AuditHelper::log('model_deleted', 'model_version', (string) $modelVersion->id);
 
-        return redirect()->route('model-versions.index')->with('success','Deleted');
+        return redirect()->route('model-versions.index')->with('success', 'Deleted');
     }
 }

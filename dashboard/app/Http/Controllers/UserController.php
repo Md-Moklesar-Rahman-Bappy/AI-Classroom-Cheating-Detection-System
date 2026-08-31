@@ -75,6 +75,6 @@ class UserController extends Controller
         $user->delete();
         AuditHelper::log('user_deleted', 'user', (string) $user->id);
 
-        return redirect()->route('users.index')->with('success','Deleted');
+        return redirect()->route('users.index')->with('success', 'Deleted');
     }
 }

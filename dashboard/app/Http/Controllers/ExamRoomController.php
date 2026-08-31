@@ -56,6 +56,6 @@ class ExamRoomController extends Controller
         $examRoom->delete();
         AuditHelper::log('room_deleted', 'exam_room', (string) $examRoom->id);
 
-        return redirect()->route('exam-rooms.index')->with('success','Room deleted');
+        return redirect()->route('exam-rooms.index')->with('success', 'Room deleted');
     }
 }

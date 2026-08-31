@@ -12,7 +12,7 @@
 
 ## Classes
 - 0 = person (visible torso/head)
-- 66 = cell phone (COCO ID; handheld rectilinear device)
+- 67 = cell phone (COCO ID verified via YOLO11n.pt — see CURRENT_STATE_CONSISTENCY_AUDIT)
 - Behavior events: temporal labels separate from boxes.
 
 ## Quality Control

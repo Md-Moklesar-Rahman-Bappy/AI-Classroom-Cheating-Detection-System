@@ -37,7 +37,7 @@
 ## Annotation Format
 
 - Format: COCO or YOLO txt (choose one, document). Bounding boxes: `x_center y_center width height` normalized or `x_min y_min x_max y_max`.
-- Classes: 0=person, 66=cell phone (COCO IDs) plus behavior events as temporal labels separate from boxes.
+- Classes: 0=person, 67=cell phone (COCO 67 verified) plus behavior events as temporal labels separate from boxes.
 - File: `datasets/annotated/<session_id>/labels/<frame>.txt` or `annotations.json`.
 - Annotation guide: `research/annotation-guide/ANNOTATION_GUIDE.md`.
 

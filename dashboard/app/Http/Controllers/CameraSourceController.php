@@ -68,6 +68,6 @@ class CameraSourceController extends Controller
         $cameraSource->delete();
         AuditHelper::log('camera_deleted', 'camera_source', (string) $cameraSource->id);
 
-        return redirect()->route('camera-sources.index')->with('success','Deleted');
+        return redirect()->route('camera-sources.index')->with('success', 'Deleted');
     }
 }

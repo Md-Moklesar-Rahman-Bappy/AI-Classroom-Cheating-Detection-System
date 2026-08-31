@@ -4,16 +4,14 @@ import sys
 import tempfile
 
 import cv2
-import numpy as np
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent.parent))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent.parent / "ai-service"))
-from scripts.benchmark import generate_synthetic_video, run_single_config, sanitize_path
+from scripts.benchmark import generate_synthetic_video, run_single_config
 
 
 def test_benchmark_configuration_validation():
-    from scripts.benchmark import run_single_config
 
     # Valid intervals
     for interval in [1, 3, 5]:
@@ -24,11 +22,21 @@ def test_benchmark_configuration_validation():
 
 
 def _results_path():
-    return pathlib.Path(__file__).resolve().parent.parent.parent / "research" / "results" / "benchmark_results.json"
+    return (
+        pathlib.Path(__file__).resolve().parent.parent.parent
+        / "research"
+        / "results"
+        / "benchmark_results.json"
+    )
 
 
 def _profile_path():
-    return pathlib.Path(__file__).resolve().parent.parent.parent / "research" / "results" / "low_resource_profile.json"
+    return (
+        pathlib.Path(__file__).resolve().parent.parent.parent
+        / "research"
+        / "results"
+        / "low_resource_profile.json"
+    )
 
 
 def test_results_schema():
@@ -61,11 +69,13 @@ def test_zero_frame_handling():
     writer.release()
     # Try to run benchmark on empty video, should handle gracefully
     try:
-        from app.config.settings import settings
         from app.detection.yolo_detector import UltralyticsDetector
 
         detector = UltralyticsDetector(
-            model_path=str(pathlib.Path("ai-service/yolo11n.pt").resolve()), conf=0.25, iou=0.45, imgsz=640
+            model_path=str(pathlib.Path("ai-service/yolo11n.pt").resolve()),
+            conf=0.25,
+            iou=0.45,
+            imgsz=640,
         )
         # Use synthetic instead of empty to avoid crash
         generate_synthetic_video(tmp, 640, 360, 10, 1)
@@ -84,7 +94,7 @@ def test_failed_source():
     try:
         src.open()
         assert False, "should have raised"
-    except (FileNotFoundError, ValueError, RuntimeError):
+    except FileNotFoundError, ValueError, RuntimeError:
         pass
     finally:
         try:
@@ -111,8 +121,16 @@ def test_comparison_generation():
     recorded = [r for r in data["results"] if r["mode"] == "recorded"]
     assert len(recorded) >= 6
     # Check that every 3rd is faster than every frame for same resolution
-    fps_640_every1 = next(r["effective_processing_fps"] for r in recorded if r["width"] == 640 and r["height"] == 360 and r["interval"] == 1)
-    fps_640_every3 = next(r["effective_processing_fps"] for r in recorded if r["width"] == 640 and r["height"] == 360 and r["interval"] == 3)
+    fps_640_every1 = next(
+        r["effective_processing_fps"]
+        for r in recorded
+        if r["width"] == 640 and r["height"] == 360 and r["interval"] == 1
+    )
+    fps_640_every3 = next(
+        r["effective_processing_fps"]
+        for r in recorded
+        if r["width"] == 640 and r["height"] == 360 and r["interval"] == 3
+    )
     assert fps_640_every3 > fps_640_every1
 
 
@@ -125,7 +143,11 @@ def test_secret_path_sanitization():
     data = json.loads(text)
     for r in data["results"]:
         assert "\\" not in r["video_path"]
-        assert "/" not in r["video_path"] or r["video_path"] == "synthetic_640x360_10fps_90f.mp4" or r["video_path"] == "live_webcam_0"
+        assert (
+            "/" not in r["video_path"]
+            or r["video_path"] == "synthetic_640x360_10fps_90f.mp4"
+            or r["video_path"] == "live_webcam_0"
+        )
         assert "token" not in text.lower()
         assert "password" not in text.lower()
 

@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\AnalysisJob;
+use App\Models\VideoAsset;
+use App\Policies\AnalysisJobPolicy;
+use App\Policies\VideoAssetPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Support\Facades\Gate::policy(\App\Models\VideoAsset::class, \App\Policies\VideoAssetPolicy::class);
-        \Illuminate\Support\Facades\Gate::policy(\App\Models\AnalysisJob::class, \App\Policies\AnalysisJobPolicy::class);
+        Gate::policy(VideoAsset::class, VideoAssetPolicy::class);
+        Gate::policy(AnalysisJob::class, AnalysisJobPolicy::class);
     }
 }

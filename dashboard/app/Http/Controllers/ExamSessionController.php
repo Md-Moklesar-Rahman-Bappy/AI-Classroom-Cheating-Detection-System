@@ -62,6 +62,6 @@ class ExamSessionController extends Controller
         $examSession->delete();
         AuditHelper::log('session_deleted', 'exam_session', (string) $examSession->id);
 
-        return redirect()->route('exam-sessions.index')->with('success','Session deleted');
+        return redirect()->route('exam-sessions.index')->with('success', 'Session deleted');
     }
 }

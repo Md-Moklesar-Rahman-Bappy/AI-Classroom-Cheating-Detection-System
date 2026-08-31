@@ -4,7 +4,7 @@
 - Model family: YOLOv11
 - Version: `n` (nano)
 - Dataset version: `v0.1.0-synthetic` (synthetic/non-identifiable only; real-data blocked)
-- Classes: `person`, `cell_phone` (COCO 66), temporal behavior events
+- Classes: `person` (COCO 0), `cell_phone` (COCO 67 verified), temporal behavior events
 - Image size: 640 (configurable to 480)
 - Epochs: as per benchmark manifest
 - Batch size: from benchmark config

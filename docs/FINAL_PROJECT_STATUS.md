@@ -6,7 +6,7 @@
 - Live surveillance mode: Partially implemented
 - EZVIZ integration: Not applicable (not in codebase)
 - Person detection: Implemented and tested (yolo11n baseline)
-- Phone detection: Implemented (class 66 in annotation guide)
+- Phone detection: Implemented (class 67 verified; YOLO11n COCO — see CURRENT_STATE_CONSISTENCY_AUDIT)
 - Tracking: Partially implemented
 - Orientation detection: Planned
 - Each temporal event (orientation/movement): Partially implemented (rules exist; full temporal model blocked by data volume)

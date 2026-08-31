@@ -1,8 +1,6 @@
 import pathlib
 import time
-import uuid
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.inputs.camera_config import CameraSourceConfig, SourceState
@@ -16,7 +14,6 @@ from app.live.session import (
     stop_session,
 )
 from app.main import app
-from app.live.session import _run_live
 
 
 def test_no_break_in_finally():
@@ -59,7 +56,11 @@ def test_stop_token_respected():
     mock_detector.detect = fake_detect
     start_session(session.session_id, mock_detector)
     time.sleep(0.3)
-    assert get_session(session.session_id).state in (SourceState.monitoring, SourceState.connected, SourceState.reconnecting)
+    assert get_session(session.session_id).state in (
+        SourceState.monitoring,
+        SourceState.connected,
+        SourceState.reconnecting,
+    )
     stop_session(session.session_id)
     time.sleep(0.2)
     assert get_session(session.session_id).state == SourceState.stopped
@@ -76,7 +77,13 @@ def test_reconnect_logic_bounded_delay():
     assert _bounded_delay(6, 1000, 30000) == 30.0
     assert _bounded_delay(10, 1000, 30000) == 30.0
     # Verify reconnect increments and respects max
-    config = CameraSourceConfig(source_type="test", identifier="test", reconnect_max_attempts=2, reconnect_base_delay_ms=100, reconnect_max_delay_ms=1000)
+    config = CameraSourceConfig(
+        source_type="test",
+        identifier="test",
+        reconnect_max_attempts=2,
+        reconnect_base_delay_ms=100,
+        reconnect_max_delay_ms=1000,
+    )
     session = create_session(config)
     from unittest.mock import Mock, patch
 
@@ -86,6 +93,7 @@ def test_reconnect_logic_bounded_delay():
 
     # Make source that fails to open to trigger reconnect
     with patch("app.live.session._get_input_source") as mock_get:
+
         class FailingSource:
             def open(self):
                 raise ValueError("fail open")
@@ -138,7 +146,7 @@ def test_resource_cleanup_guaranteed():
 def test_stop_during_reconnect_via_api():
     with TestClient(app) as client:
         # Ensure clean
-        from app.live.session import _sessions_lock, _sessions
+        from app.live.session import _sessions, _sessions_lock
 
         with _sessions_lock:
             for sid in list(_sessions.keys()):
