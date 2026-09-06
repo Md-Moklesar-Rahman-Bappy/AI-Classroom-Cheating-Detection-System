@@ -75,3 +75,66 @@ test('reviewer access rules', function () {
     $this->actingAs($auditor)->post(route('detection-events.review', $event), ['decision' => 'dismissed_normal'])->assertStatus(403);
     $this->actingAs($invigilator)->post(route('detection-events.review', $event), ['decision' => 'dismissed_normal'])->assertStatus(403);
 });
+
+test('create user with role dropdown and audit', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $this->actingAs($admin)->get(route('users.create'))->assertStatus(200)->assertSee('System Administrator')->assertSee('Full system control')->assertSee('Confirm Password');
+    $reviewerRole = Role::where('name', 'reviewer')->first();
+    $resp = $this->actingAs($admin)->post(route('users.store'), ['name' => 'New Reviewer', 'email' => 'newrev@example.com', 'password' => 'Password123!', 'password_confirmation' => 'Password123!', 'roles' => [$reviewerRole->id]]);
+    $resp->assertRedirect(route('users.index'));
+    $u = User::where('email', 'newrev@example.com')->first();
+    expect($u)->not->toBeNull();
+    expect($u->hasRole('reviewer'))->toBeTrue();
+    expect(\App\Models\AuditLog::where('action', 'user_created')->where('target_id', (string) $u->id)->exists())->toBeTrue();
+});
+
+test('edit role with confirmation and audit logs old/new', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $user = User::factory()->create();
+    $user->roles()->sync([Role::where('name', 'reviewer')->first()->id]);
+    $this->actingAs($admin)->get(route('users.edit', $user))->assertStatus(200)->assertSee('Current role')->assertSee('Reviewer');
+    $auditorRole = Role::where('name', 'auditor')->first();
+    $resp = $this->actingAs($admin)->put(route('users.update', $user), ['name' => $user->name, 'email' => $user->email, 'roles' => [$auditorRole->id]]);
+    $resp->assertRedirect(route('users.index'));
+    expect($user->fresh()->hasRole('auditor'))->toBeTrue();
+    $log = \App\Models\AuditLog::where('action', 'role_updated')->where('target_id', (string) $user->id)->latest('id')->first();
+    expect($log)->not->toBeNull();
+    expect($log->metadata['old_roles'])->toContain('reviewer');
+    expect($log->metadata['new_roles'])->toContain('auditor');
+});
+
+test('validate role required and exists', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $this->actingAs($admin)->post(route('users.store'), ['name' => 'NoRole', 'email' => 'norole@example.com', 'password' => 'Password123!', 'password_confirmation' => 'Password123!', 'roles' => []])->assertSessionHasErrors('roles');
+    $this->actingAs($admin)->post(route('users.store'), ['name' => 'BadRole', 'email' => 'badrole@example.com', 'password' => 'Password123!', 'password_confirmation' => 'Password123!', 'roles' => [9999]])->assertSessionHasErrors('roles.0');
+});
+
+test('unauthorized role assignment blocked', function () {
+    $invigilator = User::whereHas('roles', fn ($q) => $q->where('name', 'invigilator'))->first();
+    $this->actingAs($invigilator)->get(route('users.create'))->assertStatus(403);
+    $this->actingAs($invigilator)->post(route('users.store'), ['name' => 'Hack', 'email' => 'hack@example.com', 'password' => 'Password123!', 'password_confirmation' => 'Password123!', 'roles' => [Role::where('name', 'auditor')->first()->id]])->assertStatus(403);
+    $reviewer = User::whereHas('roles', fn ($q) => $q->where('name', 'reviewer'))->first();
+    $this->actingAs($reviewer)->get(route('users.index'))->assertStatus(403);
+});
+
+test('system_admin self removal and last admin protection', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $auditorRole = Role::where('name', 'auditor')->first();
+    $resp = $this->actingAs($admin)->put(route('users.update', $admin), ['name' => $admin->name, 'email' => $admin->email, 'roles' => [$auditorRole->id]]);
+    // Create second admin to allow demotion
+    $secondAdmin = User::factory()->create();
+    $secondAdmin->roles()->sync([Role::where('name', 'system_admin')->first()->id]);
+    $resp2 = $this->actingAs($admin)->put(route('users.update', $admin), ['name' => $admin->name, 'email' => $admin->email, 'roles' => [$auditorRole->id]]);
+    $resp2->assertRedirect();
+    expect($admin->fresh()->hasRole('system_admin'))->toBeFalse();
+    // Last admin deletion blocked
+    User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->where('id', '!=', $secondAdmin->id)->delete();
+    $this->actingAs($secondAdmin)->delete(route('users.destroy', $secondAdmin))->assertSessionHasErrors('user');
+});
+
+test('role filter search and badge rendering', function () {
+    $admin = User::whereHas('roles', fn ($q) => $q->where('name', 'system_admin'))->first();
+    $this->actingAs($admin)->get(route('users.index', ['role' => 'reviewer']))->assertStatus(200)->assertSee('Reviewer');
+    $this->actingAs($admin)->get(route('users.index', ['search' => 'auditor@example.com']))->assertStatus(200)->assertSee('auditor@example.com');
+    $this->actingAs($admin)->get(route('users.index'))->assertStatus(200)->assertSee('System Administrator')->assertSee('bg-danger')->assertSee('bg-success')->assertSee('bg-primary');
+});
