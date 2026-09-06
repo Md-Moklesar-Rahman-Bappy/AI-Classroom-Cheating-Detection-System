@@ -81,6 +81,16 @@ class DetectionEventController extends Controller
         return back()->with('success', 'Event restored');
     }
 
+    public function bulkRestore(Request $request)
+    {
+        if (! auth()->user()->hasAnyRole(['system_admin', 'exam_admin'])) abort(403);
+        $ids = $request->input('ids', []);
+        if (empty($ids)) return back()->withErrors(['ids'=>'No selection']);
+        $count = DetectionEvent::onlyTrashed()->whereIn('id', $ids)->restore();
+        AuditHelper::log('event_bulk_restored', 'detection_event', implode(',', $ids), 'success', ['count'=>$count]);
+        return back()->with('success', "$count events restored");
+    }
+
     public function trashed()
     {
         $events = DetectionEvent::onlyTrashed()->with(['job'])->paginate(15);

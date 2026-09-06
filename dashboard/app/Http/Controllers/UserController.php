@@ -114,9 +114,19 @@ class UserController extends Controller
                 return redirect()->route('users.index')->withErrors(['user' => 'You cannot delete your own account as the last System Administrator.']);
             }
         }
+        $id = $user->id;
         $user->delete();
-        AuditHelper::log('user_deleted', 'user', (string) $user->id);
+        AuditHelper::log('user_deleted', 'user', (string) $id);
 
-        return redirect()->route('users.index')->with('success', 'Deleted');
+        return redirect()->route('users.index')->with('success', 'Deleted (soft)');
+    }
+
+    public function restore($id)
+    {
+        if (! auth()->user()->hasRole('system_admin')) abort(403);
+        $u = User::onlyTrashed()->findOrFail($id);
+        $u->restore();
+        AuditHelper::log('user_restored', 'user', (string) $id);
+        return back()->with('success', 'User restored');
     }
 }

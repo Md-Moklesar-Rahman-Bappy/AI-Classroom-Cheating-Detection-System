@@ -34,10 +34,15 @@ Route::get('/health/ai', function (AiServiceClient $client) {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('exam-rooms/{id}/restore', [ExamRoomController::class, 'restore'])->name('exam-rooms.restore');
     Route::resource('exam-rooms', ExamRoomController::class);
+    Route::post('exam-sessions/{id}/restore', [ExamSessionController::class, 'restore'])->name('exam-sessions.restore');
     Route::resource('exam-sessions', ExamSessionController::class);
     Route::resource('camera-sources', CameraSourceController::class);
+    Route::post('camera-sources/{id}/restore', [CameraSourceController::class, 'restore'])->name('camera-sources.restore');
+    Route::post('video-assets/{id}/restore', [VideoAssetController::class, 'restore'])->name('video-assets.restore');
     Route::resource('video-assets', VideoAssetController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::post('analysis-jobs/{id}/restore', [AnalysisJobController::class, 'restore'])->name('analysis-jobs.restore');
     Route::resource('analysis-jobs', AnalysisJobController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('analysis-jobs/{analysisJob}/sync', [AnalysisJobController::class, 'sync'])->name('analysis-jobs.sync');
     Route::post('analysis-jobs/{analysisJob}/cancel', [AnalysisJobController::class, 'cancel'])->name('analysis-jobs.cancel');
@@ -46,17 +51,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('analysis-jobs/{analysisJob}/report/download', [ReportController::class, 'download'])->name('reports.download');
     Route::resource('detection-events', DetectionEventController::class)->only(['index', 'show', 'destroy']);
     Route::post('detection-events/bulk-delete', [DetectionEventController::class, 'bulkDestroy'])->name('detection-events.bulk-delete');
+    Route::post('detection-events/bulk-restore', [DetectionEventController::class, 'bulkRestore'])->name('detection-events.bulk-restore');
     Route::post('detection-events/{id}/restore', [DetectionEventController::class, 'restore'])->name('detection-events.restore');
     Route::post('detection-events/{detectionEvent}/review', [ReviewDecisionController::class, 'store'])->name('detection-events.review');
+    Route::get('evidence', [EvidenceController::class, 'index'])->name('evidence.index')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');
     Route::get('evidence/{evidence}', [EvidenceController::class, 'show'])->name('evidence.show')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');
     Route::get('evidence/{evidence}/download', [EvidenceController::class, 'download'])->name('evidence.download')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');
     Route::delete('evidence/{evidence}', [EvidenceController::class, 'destroy'])->name('evidence.destroy')->middleware('role:system_admin,exam_admin');
     Route::post('evidence/bulk-delete', [EvidenceController::class, 'bulkDestroy'])->name('evidence.bulk-delete')->middleware('role:system_admin,exam_admin');
+    Route::post('evidence/bulk-restore', [EvidenceController::class, 'bulkRestore'])->name('evidence.bulk-restore')->middleware('role:system_admin,exam_admin');
     Route::post('evidence/{id}/restore', [EvidenceController::class, 'restore'])->name('evidence.restore')->middleware('role:system_admin,exam_admin');
-    Route::post('camera-sources/{id}/restore', [CameraSourceController::class, 'restore'])->name('camera-sources.restore');
     Route::resource('model-versions', ModelVersionController::class);
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('role:system_admin,auditor,exam_admin');
+    Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore')->middleware('role:system_admin');
     Route::resource('users', UserController::class)->middleware('role:system_admin');
+    Route::get('trash', function () {
+        return view('trash.index', [
+            'rooms' => \App\Models\ExamRoom::onlyTrashed()->latest()->take(10)->get(),
+            'sessions' => \App\Models\ExamSession::onlyTrashed()->latest()->take(10)->get(),
+            'cameras' => \App\Models\CameraSource::onlyTrashed()->latest()->take(10)->get(),
+            'videos' => \App\Models\VideoAsset::onlyTrashed()->latest()->take(10)->get(),
+            'jobs' => \App\Models\AnalysisJob::onlyTrashed()->latest()->take(10)->get(),
+            'events' => \App\Models\DetectionEvent::onlyTrashed()->latest()->take(10)->get(),
+            'evidences' => \App\Models\EventEvidence::onlyTrashed()->latest()->take(10)->get(),
+            'users' => \App\Models\User::onlyTrashed()->latest()->take(10)->get(),
+        ]);
+    })->name('trash.index')->middleware('role:system_admin,exam_admin');
     Route::get('live', [LiveController::class, 'index'])->name('live.index')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
     Route::post('live/start', [LiveController::class, 'start'])->name('live.start')->middleware('role:system_admin,exam_admin,invigilator');
     Route::get('live/{sessionId}', [LiveController::class, 'show'])->name('live.show')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');

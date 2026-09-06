@@ -53,13 +53,14 @@ class RolePermissionSeeder extends Seeder
 
         $demos = [
             ['System Admin', 'admin@example.com', 'system_admin'],
-            ['Exam Admin', 'exam@example.com', 'exam_admin'],
+            ['Exam Admin', 'examadmin@example.com', 'exam_admin'],
+            ['Exam Admin (legacy)', 'exam@example.com', 'exam_admin'],
             ['Invigilator', 'invigilator@example.com', 'invigilator'],
             ['Reviewer', 'reviewer@example.com', 'reviewer'],
             ['Auditor', 'auditor@example.com', 'auditor'],
         ];
         foreach ($demos as [$name,$email,$roleName]) {
-            $user = User::firstOrCreate(['email' => $email], ['name' => $name, 'password' => Hash::make('Password123!'), 'email_verified_at' => now()]);
+            $user = User::firstOrCreate(['email' => $email], ['name' => $name, 'password' => Hash::make('password'), 'email_verified_at' => now()]);
             $role = Role::where('name', $roleName)->first();
             $user->roles()->syncWithoutDetaching([$role->id]);
         }

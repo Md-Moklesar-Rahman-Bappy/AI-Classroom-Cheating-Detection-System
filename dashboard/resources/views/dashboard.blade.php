@@ -48,26 +48,26 @@
 <div class="row g-4 mb-4">
     <div class="col-6 col-md-3">
         <div class="card p-3 h-100">
-            <div class="d-flex align-items-center gap-2 mb-2"><span class="d-flex align-items-center justify-content-center rounded" style="width:28px;height:28px;background:#dbeafe;color:#2563eb;"><i class="bi bi-robot" style="font-size:14px;"></i></span><span style="font-size:13px;font-weight:600;">AI Service</span><span class="badge bg-success status-badge ms-auto"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Online</span></div>
-            <div class="text-muted" style="font-size:12px;">http://127.0.0.1:8001 — YOLO11n</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;"><span class="badge bg-light text-dark border">Latency ~180ms</span><span class="text-success">Healthy</span></div>
+            <div class="d-flex align-items-center gap-2 mb-2"><span class="d-flex align-items-center justify-content-center rounded" style="width:28px;height:28px;background:#dbeafe;color:#2563eb;"><i class="bi bi-robot" style="font-size:14px;"></i></span><span style="font-size:13px;font-weight:600;">AI Service</span>@if(($aiStatus ?? 'unavailable')=='online')<span class="badge bg-success status-badge ms-auto"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Online</span>@else<span class="badge bg-danger status-badge ms-auto"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Unavailable</span>@endif</div>
+            <div class="text-muted" style="font-size:12px;">{{ config('ai.base_url', 'http://127.0.0.1:8001') }} — YOLO11n</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;">@if(isset($aiLatency) && $aiLatency)<span class="badge bg-light text-dark border">Latency {{ $aiLatency }}ms</span>@else<span class="badge bg-light text-dark border">Latency unavailable</span>@endif @if(($aiStatus ?? 'unavailable')=='online')<span class="text-success">Healthy</span>@else<span class="text-danger">Unavailable</span>@endif</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card p-3 h-100">
-            <div class="d-flex align-items-center gap-2 mb-2"><span class="d-flex align-items-center justify-content-center rounded" style="width:28px;height:28px;background:#dcfce7;color:#16a34a;"><i class="bi bi-database" style="font-size:14px;"></i></span><span style="font-size:13px;font-weight:600;">Database</span><span class="badge bg-success status-badge ms-auto">Online</span></div>
-            <div class="text-muted" style="font-size:12px;">MySQL 10.4.32 — 16 tables</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;"><span class="badge bg-light text-dark border">3306</span><span class="text-success">Connected</span></div>
+            <div class="d-flex align-items-center gap-2 mb-2"><span class="d-flex align-items-center justify-content-center rounded" style="width:28px;height:28px;background:#dcfce7;color:#16a34a;"><i class="bi bi-database" style="font-size:14px;"></i></span><span style="font-size:13px;font-weight:600;">Database</span>@if(($dbStatus ?? 'online')=='online')<span class="badge bg-success status-badge ms-auto">Online</span>@else<span class="badge bg-danger status-badge ms-auto">Unavailable</span>@endif</div>
+            <div class="text-muted" style="font-size:12px;">MySQL — {{ $stats['rooms'] + $stats['sessions'] + $stats['jobs'] + $stats['events'] }} records</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;"><span class="badge bg-light text-dark border">{{ config('database.connections.mysql.port', '3306') }}</span>@if(($dbStatus ?? 'online')=='online')<span class="text-success">Connected</span>@else<span class="text-danger">Unavailable</span>@endif</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card p-3 h-100">
-            <div class="d-flex align-items-center gap-2 mb-2"><span class="d-flex align-items-center justify-content-center rounded" style="width:28px;height:28px;background:#fef3c7;color:#d97706;"><i class="bi bi-camera-video" style="font-size:14px;"></i></span><span style="font-size:13px;font-weight:600;">Cameras</span><span class="badge bg-secondary status-badge ms-auto">4 sources</span></div>
-            <div class="text-muted" style="font-size:12px;">Webcam / RTSP / Test</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;"><span class="badge bg-light text-dark border">0 live</span><span class="text-muted">Standby</span></div>
+            <div class="d-flex align-items-center gap-2 mb-2"><span class="d-flex align-items-center justify-content-center rounded" style="width:28px;height:28px;background:#fef3c7;color:#d97706;"><i class="bi bi-camera-video" style="font-size:14px;"></i></span><span style="font-size:13px;font-weight:600;">Cameras</span><span class="badge bg-secondary status-badge ms-auto">{{ $cameraCount ?? 0 }} sources</span></div>
+            <div class="text-muted" style="font-size:12px;">Webcam / RTSP / Test</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;"><span class="badge bg-light text-dark border">{{ $liveCount ?? 0 }} live</span>@if(($liveCount ?? 0)>0)<span class="text-success">Active</span>@else<span class="text-muted">Standby</span>@endif</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <div class="card p-3 h-100">
             <div class="d-flex align-items-center gap-2 mb-2"><span class="d-flex align-items-center justify-content-center rounded" style="width:28px;height:28px;background:#e0e7ff;color:#4f46e5;"><i class="bi bi-collection" style="font-size:14px;"></i></span><span style="font-size:13px;font-weight:600;">Queue</span><span class="badge bg-warning text-dark status-badge ms-auto">Database</span></div>
-            <div class="text-muted" style="font-size:12px;">Jobs table — 0 pending</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;"><span class="badge bg-light text-dark border">Sync</span><span class="text-muted">Idle</span></div>
+            <div class="text-muted" style="font-size:12px;">Jobs table — {{ $queuePending ?? 0 }} pending</div><div class="d-flex align-items-center gap-2 mt-2" style="font-size:11px;"><span class="badge bg-light text-dark border">Sync</span>@if(($queuePending ?? 0)>0)<span class="text-warning">Processing</span>@else<span class="text-muted">Idle</span>@endif</div>
         </div>
     </div>
 </div>
@@ -77,15 +77,15 @@
         <div class="card h-100">
             <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-bottom:1px solid #e2e8f0;">
                 <h5 class="mb-0" style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;"><i class="bi bi-heart-pulse me-2 text-success"></i>System Health</h5>
-                <span class="badge bg-success status-badge">Healthy</span>
+                @if(($aiStatus ?? 'unavailable')=='online' && ($dbStatus ?? 'online')=='online')<span class="badge bg-success status-badge">Healthy</span>@else<span class="badge bg-warning text-dark status-badge">Degraded</span>@endif
             </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">AI Service</span><span class="badge bg-success status-badge"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Online</span></div>
-                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">Database</span><span class="badge bg-success status-badge">Online</span></div>
-                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">Cameras</span><span class="badge bg-secondary status-badge">Standby</span></div>
-                <div class="d-flex justify-content-between" style="font-size:13px;"><span class="text-muted">Queue</span><span class="badge bg-warning text-dark status-badge">Database — Idle</span></div>
-                <div class="progress mt-3" style="height:6px;"><div class="progress-bar bg-success" style="width:92%"></div></div>
-                <div class="text-muted mt-2" style="font-size:11px;">All health checks via <code>/health/ai</code> — text plus color, never color alone.</div>
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">AI Service</span>@if(($aiStatus ?? 'unavailable')=='online')<span class="badge bg-success status-badge"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Online @if(isset($aiLatency)) {{ $aiLatency }}ms @endif</span>@else<span class="badge bg-danger status-badge"><i class="bi bi-circle-fill me-1" style="font-size:7px;"></i> Unavailable</span>@endif</div>
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">Database</span>@if(($dbStatus ?? 'online')=='online')<span class="badge bg-success status-badge">Online</span>@else<span class="badge bg-danger status-badge">Unavailable</span>@endif</div>
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;"><span class="text-muted">Cameras</span>@if(($liveCount ?? 0)>0)<span class="badge bg-success status-badge">{{ $liveCount }} live</span>@else<span class="badge bg-secondary status-badge">Standby — {{ $cameraCount ?? 0 }} sources</span>@endif</div>
+                <div class="d-flex justify-content-between" style="font-size:13px;"><span class="text-muted">Queue</span><span class="badge bg-warning text-dark status-badge">Database — {{ $queuePending ?? 0 }} pending</span></div>
+                <div class="progress mt-3" style="height:6px;"><div class="progress-bar @if(($aiStatus ?? 'unavailable')=='online' && ($dbStatus ?? 'online')=='online') bg-success @else bg-warning @endif" style="width:@if(($aiStatus ?? 'unavailable')=='online' && ($dbStatus ?? 'online')=='online') 100% @else 60% @endif"></div></div>
+                <div class="text-muted mt-2" style="font-size:11px;">All health checks via <code>/health/ai</code> — text plus color, never color alone. @if(($aiStatus ?? 'unavailable')!='online') <span class="text-danger">AI service unavailable — check 8001.</span> @endif</div>
             </div>
         </div>
     </div>

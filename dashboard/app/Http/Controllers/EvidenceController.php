@@ -9,6 +9,30 @@ use Illuminate\Support\Facades\Storage;
 
 class EvidenceController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = EventEvidence::with(['event']);
+        if ($request->filled('event_type')) {
+            $query->whereHas('event', fn($q) => $q->where('event_type', $request->event_type));
+        }
+        if ($request->filled('file_type')) {
+            $query->where('file_type', $request->file_type);
+        }
+        if ($request->boolean('trashed')) {
+            $query = EventEvidence::onlyTrashed()->with(['event']);
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where('file_path', 'like', "%{$s}%");
+        }
+        $evidences = $query->latest()->paginate(12)->withQueryString();
+        if ($request->boolean('trashed')) {
+            $evidences = EventEvidence::onlyTrashed()->with(['event'])->latest()->paginate(12)->withQueryString();
+            return view('evidence.gallery', compact('evidences'));
+        }
+        return view('evidence.gallery', compact('evidences'));
+    }
+
     public function show(EventEvidence $evidence)
     {
         $this->authorizeAccess($evidence);
@@ -90,6 +114,16 @@ class EvidenceController extends Controller
         $ev->restore();
         AuditHelper::log('evidence_restored', 'event_evidence', (string) $id);
         return back()->with('success', 'Evidence restored');
+    }
+
+    public function bulkRestore(Request $request)
+    {
+        if (! auth()->user()->hasAnyRole(['system_admin','exam_admin'])) abort(403);
+        $ids = $request->input('ids', []);
+        if (empty($ids)) return back()->withErrors(['ids'=>'No selection']);
+        $count = EventEvidence::onlyTrashed()->whereIn('id', $ids)->restore();
+        AuditHelper::log('evidence_bulk_restored', 'event_evidence', implode(',', $ids), 'success', ['count'=>$count]);
+        return back()->with('success', "$count evidences restored");
     }
 
     private function authorizeAccess(EventEvidence $evidence)

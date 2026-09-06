@@ -9,9 +9,11 @@ use Illuminate\Http\Request;
 
 class ExamSessionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $sessions = ExamSession::with('room')->paginate(10);
+        $query = ExamSession::with('room');
+        if ($request->boolean('trashed')) $query = ExamSession::onlyTrashed()->with('room');
+        $sessions = $query->paginate(10)->withQueryString();
 
         return view('exam-sessions.index', compact('sessions'));
     }
@@ -59,9 +61,18 @@ class ExamSessionController extends Controller
 
     public function destroy(ExamSession $examSession)
     {
+        $id = $examSession->id;
         $examSession->delete();
-        AuditHelper::log('session_deleted', 'exam_session', (string) $examSession->id);
+        AuditHelper::log('session_deleted', 'exam_session', (string) $id);
 
-        return redirect()->route('exam-sessions.index')->with('success', 'Session deleted');
+        return redirect()->route('exam-sessions.index')->with('success', 'Session deleted (soft)');
+    }
+
+    public function restore($id)
+    {
+        $s = ExamSession::onlyTrashed()->findOrFail($id);
+        $s->restore();
+        AuditHelper::log('session_restored', 'exam_session', (string) $id);
+        return back()->with('success', 'Session restored');
     }
 }

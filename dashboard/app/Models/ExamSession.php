@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ExamSession extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = ['exam_room_id', 'name', 'status', 'started_at', 'ended_at', 'created_by'];
 
     protected $casts = ['started_at' => 'datetime', 'ended_at' => 'datetime'];

@@ -11,9 +11,11 @@ use Illuminate\Support\Str;
 
 class VideoAssetController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $assets = VideoAsset::with('session')->latest()->paginate(10);
+        $query = VideoAsset::with('session');
+        if ($request->boolean('trashed')) $query = VideoAsset::onlyTrashed()->with('session');
+        $assets = $query->latest()->paginate(10)->withQueryString();
 
         return view('video-assets.index', compact('assets'));
     }
@@ -102,12 +104,21 @@ class VideoAssetController extends Controller
 
             return back()->withErrors(['video' => 'Cannot delete video with linked jobs (count: '.$videoAsset->analysisJobs()->count().')']);
         }
+        $id = $videoAsset->id;
         $videoAsset->delete();
-        AuditHelper::log('video_deleted', 'video_asset', (string) $videoAsset->id, 'success', [
+        AuditHelper::log('video_deleted', 'video_asset', (string) $id, 'success', [
             'filename' => $videoAsset->original_filename,
         ]);
 
-        return redirect()->route('video-assets.index')->with('success', 'Deleted (soft deleted, recoverable)');
+        return redirect()->route('video-assets.index')->with('success', 'Deleted (soft)');
+    }
+
+    public function restore($id)
+    {
+        $v = VideoAsset::onlyTrashed()->findOrFail($id);
+        $v->restore();
+        AuditHelper::log('video_restored', 'video_asset', (string) $id);
+        return back()->with('success', 'Video restored');
     }
 
     private function cleanAbandoned(): void

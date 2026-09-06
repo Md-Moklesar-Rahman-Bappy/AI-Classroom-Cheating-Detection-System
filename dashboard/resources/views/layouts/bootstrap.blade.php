@@ -101,7 +101,8 @@
 
             <div class="nav-section">Detection & Review</div>
             <a class="nav-link {{ request()->routeIs("detection-events.*") ? "active" : "" }}" href="{{ route("detection-events.index") }}" onclick="autoCloseSidebar()"><i class="bi bi-activity" aria-hidden="true"></i> <span>Events</span></a>
-            <a class="nav-link {{ request()->routeIs("evidence.*") ? "active" : "" }}" href="{{ route("detection-events.index") }}" onclick="autoCloseSidebar()"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> <span>Evidence</span></a>
+            <a class="nav-link {{ request()->routeIs("evidence.*") ? "active" : "" }}" href="{{ route("evidence.index") }}" onclick="autoCloseSidebar()"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> <span>Evidence</span></a>
+            <a class="nav-link {{ request()->routeIs("trash.*") ? "active" : "" }}" href="{{ route("trash.index") }}" onclick="autoCloseSidebar()"><i class="bi bi-trash" aria-hidden="true"></i> <span>Trash</span></a>
             <a class="nav-link {{ request()->routeIs("detection-events.*") && request()->query("review_status")=="pending" ? "active" : "" }}" href="{{ route("detection-events.index") }}?review_status=pending" onclick="autoCloseSidebar()"><i class="bi bi-eye" aria-hidden="true"></i> <span>Reviews</span> <span class="badge bg-warning text-dark">pending</span></a>
             <a class="nav-link {{ request()->routeIs("reports.*") ? "active" : "" }}" href="{{ route("analysis-jobs.index") }}" onclick="autoCloseSidebar()"><i class="bi bi-file-text" aria-hidden="true"></i> <span>Reports</span></a>
 

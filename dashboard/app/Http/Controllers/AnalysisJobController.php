@@ -16,10 +16,12 @@ use Illuminate\Support\Str;
 
 class AnalysisJobController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', AnalysisJob::class);
-        $jobs = AnalysisJob::with(['session', 'modelVersion'])->latest()->paginate(10);
+        $query = AnalysisJob::with(['session', 'modelVersion']);
+        if ($request->boolean('trashed')) $query = AnalysisJob::onlyTrashed()->with(['session', 'modelVersion']);
+        $jobs = $query->latest()->paginate(10)->withQueryString();
 
         return view('analysis-jobs.index', compact('jobs'));
     }
@@ -187,10 +189,20 @@ class AnalysisJobController extends Controller
     public function destroy(AnalysisJob $analysisJob)
     {
         $this->authorize('delete', $analysisJob);
+        $id = $analysisJob->id;
         $analysisJob->delete();
-        AuditHelper::log('job_deleted', 'analysis_job', (string) $analysisJob->id, 'success', ['soft_deleted' => true]);
-        Log::info('Analysis job soft deleted', ['job_id' => $analysisJob->id, 'user_id' => auth()->id()]);
+        AuditHelper::log('job_deleted', 'analysis_job', (string) $id, 'success', ['soft_deleted' => true]);
+        Log::info('Analysis job soft deleted', ['job_id' => $id, 'user_id' => auth()->id()]);
 
         return redirect()->route('analysis-jobs.index')->with('success', 'Job deleted (soft)');
+    }
+
+    public function restore($id)
+    {
+        $j = AnalysisJob::onlyTrashed()->findOrFail($id);
+        $this->authorize('delete', $j);
+        $j->restore();
+        AuditHelper::log('job_restored', 'analysis_job', (string) $id);
+        return back()->with('success', 'Job restored');
     }
 }

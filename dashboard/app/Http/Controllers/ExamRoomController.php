@@ -8,9 +8,11 @@ use Illuminate\Http\Request;
 
 class ExamRoomController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $rooms = ExamRoom::paginate(10);
+        $query = ExamRoom::query();
+        if ($request->boolean('trashed')) $query = ExamRoom::onlyTrashed();
+        $rooms = $query->paginate(10)->withQueryString();
 
         return view('exam-rooms.index', compact('rooms'));
     }
@@ -53,9 +55,18 @@ class ExamRoomController extends Controller
         if ($examRoom->sessions()->exists()) {
             return back()->withErrors(['name' => 'Cannot delete room with sessions']);
         }
+        $id = $examRoom->id;
         $examRoom->delete();
-        AuditHelper::log('room_deleted', 'exam_room', (string) $examRoom->id);
+        AuditHelper::log('room_deleted', 'exam_room', (string) $id);
 
-        return redirect()->route('exam-rooms.index')->with('success', 'Room deleted');
+        return redirect()->route('exam-rooms.index')->with('success', 'Room deleted (soft)');
+    }
+
+    public function restore($id)
+    {
+        $room = ExamRoom::onlyTrashed()->findOrFail($id);
+        $room->restore();
+        AuditHelper::log('room_restored', 'exam_room', (string) $id);
+        return back()->with('success', 'Room restored');
     }
 }
