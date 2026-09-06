@@ -295,7 +295,7 @@ def test_partial_upload_cleans_temporary_files():
             tmp_path = Path(tmp.name)
         try:
             with open(tmp_path, "rb") as f:
-                resp = client.post(
+                client.post(
                     "/api/v1/jobs/recorded", files={"file": ("partial.mp4", f, "video/mp4")}
                 )
             # After request, temp file should be cleaned (deleted in finally)

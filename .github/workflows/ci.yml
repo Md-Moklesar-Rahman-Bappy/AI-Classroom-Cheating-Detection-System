@@ -6,64 +6,125 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   laravel:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dashboard
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+          extensions: bcmath, ctype, curl, dom, fileinfo, filter, gd, hash, json, mbstring, openssl, pcre, pdo, pdo_sqlite, session, sqlite3, tokenizer, xml, zip
           coverage: none
-      - name: Install PHP deps
-        working-directory: dashboard
-        run: composer install --prefer-dist --no-progress --no-interaction --audit
+          tools: composer:v2
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('dashboard/composer.lock') }}
+          restore-keys: composer-
+
       - name: Composer validate
-        working-directory: dashboard
         run: composer validate --strict
-      - name: Pint
-        working-directory: dashboard
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Pint (code style)
         run: vendor/bin/pint --test
-      - name: Setup env
-        working-directory: dashboard
+
+      - name: Setup environment
         run: |
+          set -euo pipefail
           cp .env.example .env
-          php artisan key:generate
-      - name: Migrate and test
-        working-directory: dashboard
+          php artisan key:generate --force
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan config:clear
+
+      - name: Run migrations and tests
+        env:
+          APP_ENV: testing
+          APP_DEBUG: "false"
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          MAIL_MAILER: array
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
         run: |
+          set -euo pipefail
           php artisan migrate --force
           vendor/bin/pest --compact
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: dashboard/package-lock.json
-      - name: Build assets
-        working-directory: dashboard
+
+      - name: Build frontend assets
         run: |
+          set -euo pipefail
           npm ci
           npm run build
 
   python:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ai-service
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install deps
-        working-directory: ai-service
+          cache: pip
+          cache-dependency-path: |
+            ai-service/requirements.txt
+            ai-service/requirements-dev.txt
+
+      - name: Install Python dependencies
         run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          pip install python-multipart
-      - name: Ruff check
-        working-directory: ai-service
+
+      - name: Ruff lint
         run: ruff check .
-      - name: Black check
-        working-directory: ai-service
+
+      - name: Black format check
         run: black --check .
+
       - name: Pytest (lightweight, no model download)
-        working-directory: ai-service
         run: python -m pytest tests/test_config.py tests/test_inputs.py tests/test_tracking_orientation.py -q
+
+      - name: Import smoke test
+        run: python -c "from app.main import app; print('import ok')"

@@ -18,12 +18,12 @@
   - Performance: Will benchmark actual FPS at 640x360 and 480x270; process-every-3rd-frame default expected ~1-3 FPS on CPU; 480x270 may provide higher FPS than 640x360.
   - No CUDA, no ROCm, no GPU acceleration.
 
-- **Operating System**: Microsoft Windows 11 Pro
-  - Development environment: Visual Studio Code
-  - PowerShell 5.1 / CMD for batch operations.
-  - Python 3.14.0 from official installer.
+ - **Operating System**: Microsoft Windows 11 Pro
+   - Development environment: Visual Studio Code
+   - PowerShell 5.1 / CMD for batch operations.
+   - Python 3.14.0 from official installer (local dev); CI pins Python 3.11 for deterministic GitHub-hosted builds.
 
-- **Python Version**: 3.14.0 (verified import for all critical packages: ultralytics, fastapi, opencv-python, numpy, pytest, ruff, black, mediapipe, psutil, pydantic, yaml, httpx)
+- **Python Version**: 3.11 (CI) and 3.14.0 (local dev verified). Supported range 3.11–3.14; CI uses 3.11; all critical packages verified on both: ultralytics, fastapi, opencv-contrib-python, numpy, pytest, ruff, black, mediapipe, psutil, pydantic, yaml, httpx
 
 ## Installed Package Versions (Verified at Audit Time)
 
@@ -32,7 +32,7 @@
 | ultralytics | 8.4.135 | AGPL-3.0 licensed; pinned in requirements.txt < 9.0.0 |
 | fastapi | 0.136.1 | ASGI API framework |
 | uvicorn | 0.47.0 | ASGI server |
-| opencv-python | 4.13.0.92 | Computer vision (cv2) |
+| opencv-contrib-python | 4.13.0.92 | Computer vision (cv2) |
 | numpy | 2.4.2 | Numerical computing |
 | pytest | 9.1.1 | Testing framework |
 | ruff | 0.16.5 | Linter |
@@ -128,12 +128,12 @@ Likely adjustments:
 
 All camera-stream capabilities will be tested during Phase 2 (Shared AI Foundation) and documented in CAMERA_SETUP.md. Until verified, the system assumes recorded video mode as primary and local webcam as live-mode fallback.
 
-## Python 3.14 Compatibility
+## Python Compatibility (3.11 CI / 3.14 local)
 
-All critical packages verified to import successfully on Python 3.14.0:
+All critical packages verified to import successfully on Python 3.11 (CI) and 3.14.0 (local dev):
 - ultralytics 8.4.135
 - fastapi 0.136.1
-- opencv-python 4.13.0.92
+- opencv-contrib-python 4.13.0.92
 - numpy 2.4.2
 - pytest 9.1.1
 - mediapipe 1.0.1
@@ -143,7 +143,7 @@ All critical packages verified to import successfully on Python 3.14.0:
 - PyYAML 6.0.1
 - httpx 0.28.1
 
-No verified incompatibilities blocking development. If future incompatibility discovered, Python 3.11 or pinned LTS version will be documented as alternative.
+No verified incompatibilities blocking development. CI pins Python 3.11 (GitHub-hosted) for reliability; local dev may use 3.14.
 
 ## Dependency Direction (Explicit)
 

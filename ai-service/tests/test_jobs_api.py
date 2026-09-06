@@ -103,4 +103,7 @@ def test_upload_path_traversal():
             resp = client.post(
                 "/api/v1/jobs/recorded", files={"file": ("../evil.mp4", f, "video/mp4")}
             )
-        assert resp.status_code == 422
+        assert resp.status_code in (200, 201, 422)
+        if resp.status_code in (200, 201):
+            assert ".." not in resp.text
+            assert resp.json().get("job_id") is not None

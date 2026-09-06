@@ -94,7 +94,7 @@ def test_failed_source():
     try:
         src.open()
         assert False, "should have raised"
-    except FileNotFoundError, ValueError, RuntimeError:
+    except (FileNotFoundError, ValueError, RuntimeError):
         pass
     finally:
         try:
