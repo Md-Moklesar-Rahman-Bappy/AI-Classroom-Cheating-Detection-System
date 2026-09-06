@@ -179,10 +179,11 @@ class ProcessAnalysisJob implements ShouldQueue
             $eventsData = $client->getEvents($remoteId, $correlationId);
             $metricsData = $client->getMetrics($remoteId, $correlationId);
             $imported = 0;
-            foreach ($eventsData['data'] ?? [] as $ev) {
-                $eventType = $ev['event_type'] ?? 'D2';
-                $typeMap = ['Mobile Phone Detected' => 'D2', 'Repeated Looking Left' => 'B1', 'Repeated Looking Right' => 'B2', 'Looking Backward' => 'B3', 'Leaving Seat' => 'B4'];
-                $mapped = $typeMap[$eventType] ?? (in_array($eventType, ['D1', 'D2', 'B1', 'B2', 'B3', 'B4']) ? $eventType : 'B1');
+            foreach (($eventsData['data'] ?? $eventsData['events'] ?? []) as $ev) {
+                $raw = $ev['event_type'] ?? $ev['event_code'] ?? 'D2';
+                $typeMap = ['Mobile Phone Detected'=>'D2','Person Detected'=>'D1','Multiple Persons Detected'=>'D3','Repeated Looking Left'=>'B1','Looking Left'=>'B1','Repeated Looking Right'=>'B2','Looking Right'=>'B2','Looking Backward'=>'B3','Leaving Seat'=>'B4','Possible Seat Departure'=>'B4','Excessive Head Movement'=>'B5','Normal'=>'S1','Insufficient Evidence'=>'S2','Tracking Lost'=>'S3'];
+                $code = $ev['event_code'] ?? $typeMap[$raw] ?? (in_array($raw, ['D1','D2','D3','B1','B2','B3','B4','B5','S1','S2','S3']) ? $raw : 'B1');
+                $mapped = $code;
                 // idempotent sync via event_id
                 $exists = DetectionEvent::where('id', $ev['event_id'] ?? null)->exists();
                 if (isset($ev['event_id']) && $exists) {

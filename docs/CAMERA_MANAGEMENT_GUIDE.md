@@ -1,0 +1,2 @@
+# Camera Management Guide
+Resource routes: index/create/store/show/edit/update/destroy + restore via POST /camera-sources/{id}/restore (soft delete). Delete blocked if status active/connected or linked analysis_jobs pending/queued/processing. Confirmation via SweetAlert2 modal + Bootstrap fallback. Encrypted credentials hidden. Index shows delete action for system_admin/exam_admin; includes status badges, empty state, pagination, trash filter. Audited camera_deleted/restored.

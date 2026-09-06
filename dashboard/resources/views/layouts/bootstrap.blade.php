@@ -167,6 +167,7 @@
         </footer>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         const sidebar=document.getElementById('sidebar'),backdrop=document.getElementById('backdrop'),menuBtn=document.getElementById('menuBtn');
         function toggleSidebar(){const s=sidebar.classList.toggle('show');backdrop.classList.toggle('d-none',!s);document.body.style.overflow=s?'hidden':'';if(menuBtn)menuBtn.setAttribute('aria-expanded',s);if(s) trapFocus();}

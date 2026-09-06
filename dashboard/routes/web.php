@@ -44,9 +44,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('analysis-jobs/{analysisJob}/retry', [AnalysisJobController::class, 'retry'])->name('analysis-jobs.retry');
     Route::get('analysis-jobs/{analysisJob}/report', [ReportController::class, 'show'])->name('reports.show');
     Route::get('analysis-jobs/{analysisJob}/report/download', [ReportController::class, 'download'])->name('reports.download');
-    Route::resource('detection-events', DetectionEventController::class)->only(['index', 'show']);
+    Route::resource('detection-events', DetectionEventController::class)->only(['index', 'show', 'destroy']);
+    Route::post('detection-events/bulk-delete', [DetectionEventController::class, 'bulkDestroy'])->name('detection-events.bulk-delete');
+    Route::post('detection-events/{id}/restore', [DetectionEventController::class, 'restore'])->name('detection-events.restore');
     Route::post('detection-events/{detectionEvent}/review', [ReviewDecisionController::class, 'store'])->name('detection-events.review');
     Route::get('evidence/{evidence}', [EvidenceController::class, 'show'])->name('evidence.show')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');
+    Route::get('evidence/{evidence}/download', [EvidenceController::class, 'download'])->name('evidence.download')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');
+    Route::delete('evidence/{evidence}', [EvidenceController::class, 'destroy'])->name('evidence.destroy')->middleware('role:system_admin,exam_admin');
+    Route::post('evidence/bulk-delete', [EvidenceController::class, 'bulkDestroy'])->name('evidence.bulk-delete')->middleware('role:system_admin,exam_admin');
+    Route::post('evidence/{id}/restore', [EvidenceController::class, 'restore'])->name('evidence.restore')->middleware('role:system_admin,exam_admin');
+    Route::post('camera-sources/{id}/restore', [CameraSourceController::class, 'restore'])->name('camera-sources.restore');
     Route::resource('model-versions', ModelVersionController::class);
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('role:system_admin,auditor,exam_admin');
     Route::resource('users', UserController::class)->middleware('role:system_admin');

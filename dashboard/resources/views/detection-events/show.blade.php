@@ -21,9 +21,13 @@
                 <div>Frame {{ $ev->frame_number ?? "—" }} · {{ number_format($ev->captured_at_seconds ?? 0,1) }}s · {{ $ev->width }}×{{ $ev->height }}</div>
                 <div style="opacity:0.7;">Click image to zoom · Only highlighted student triggered event</div>
             </div>
-            <div style="position:absolute;top:8px;right:8px;display:flex;gap:6px;">
-                <a href="{{ route("evidence.show",$ev) }}" target="_blank" class="btn btn-sm btn-light" style="font-size:11px;"><i class="bi bi-arrows-fullscreen me-1"></i> Full size</a>
-                <a href="{{ route("evidence.show",$ev) }}" download class="btn btn-sm btn-primary" style="font-size:11px;"><i class="bi bi-download me-1"></i> Download</a>
+            <div style="position:absolute;top:8px;right:8px;display:flex;gap:6px;flex-wrap:wrap;">
+                <a href="{{ route("evidence.show",$ev) }}" target="_blank" class="btn btn-sm btn-light" style="font-size:11px;">Full size</a>
+                <a href="{{ route("evidence.download",$ev) }}?format=original" class="btn btn-sm btn-light" style="font-size:11px;">Original</a>
+                <a href="{{ route("evidence.download",$ev) }}?format=jpg" class="btn btn-sm btn-primary" style="font-size:11px;"><i class="bi bi-download me-1"></i> JPG</a>
+                <a href="{{ route("evidence.download",$ev) }}?format=png" class="btn btn-sm btn-primary" style="font-size:11px;">PNG</a>
+                <a href="{{ route("evidence.download",$ev) }}?format=json" class="btn btn-sm btn-dark" style="font-size:11px;">JSON</a>
+                @if(auth()->user()->hasAnyRole(['system_admin','exam_admin']))<form method="POST" action="{{ route("evidence.destroy",$ev) }}" class="d-inline delete-evidence-form">@csrf @method("DELETE")<button class="btn btn-sm btn-danger" style="font-size:11px;">Delete</button></form>@endif
             </div>
         </div>
         @endforeach

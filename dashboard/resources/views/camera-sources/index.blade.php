@@ -33,6 +33,9 @@
 <div class="btn-group btn-group-sm" role="group" aria-label="Camera actions">
 <a href="{{ route("camera-sources.show",$s) }}" class="btn btn-outline-primary focus-ring">View</a>
 <a href="{{ route("camera-sources.edit",$s) }}" class="btn btn-outline-secondary focus-ring">Edit</a>
+@if(auth()->user()->hasAnyRole(['system_admin','exam_admin']))
+<form method="POST" action="{{ route("camera-sources.destroy",$s) }}" class="d-inline delete-camera-form">@csrf @method("DELETE")<button class="btn btn-outline-danger focus-ring" data-name="{{ $s->name }}">Delete</button></form>
+@endif
 </div>
 </td>
 </tr>
@@ -53,4 +56,9 @@
 <div class="d-flex justify-content-center mt-3">{{ $sources->links() }}</div>
 </div>
 @endif
+@push("scripts")
+<script>
+document.querySelectorAll('.delete-camera-form').forEach(f=>{f.addEventListener('submit',e=>{e.preventDefault();const btn=f.querySelector('button');Swal.fire({title:'Delete camera?',text:btn.dataset.name,icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)f.submit();});});});
+</script>
+@endpush
 @endsection

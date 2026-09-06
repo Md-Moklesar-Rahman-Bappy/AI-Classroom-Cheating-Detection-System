@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Crypt;
 
 class CameraSourceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $sources = CameraSource::with('session')->paginate(10);
+        $query = CameraSource::with('session');
+        if ($request->boolean('trashed')) $query = CameraSource::onlyTrashed()->with('session');
+        $sources = $query->paginate(10)->withQueryString();
 
         return view('camera-sources.index', compact('sources'));
     }
@@ -65,9 +67,25 @@ class CameraSourceController extends Controller
 
     public function destroy(CameraSource $cameraSource)
     {
+        if ($cameraSource->status === 'active' || $cameraSource->status === 'connected') {
+            return back()->withErrors(['camera' => 'Cannot delete active/connected camera. Stop monitoring first.']);
+        }
+        $hasActiveJob = \App\Models\AnalysisJob::where('camera_source_id', $cameraSource->id)->whereIn('status', ['pending','queued','processing'])->exists();
+        if ($hasActiveJob) {
+            return back()->withErrors(['camera' => 'Camera used by active monitoring job']);
+        }
+        $id = $cameraSource->id;
         $cameraSource->delete();
-        AuditHelper::log('camera_deleted', 'camera_source', (string) $cameraSource->id);
+        AuditHelper::log('camera_deleted', 'camera_source', (string) $id);
 
-        return redirect()->route('camera-sources.index')->with('success', 'Deleted');
+        return redirect()->route('camera-sources.index')->with('success', 'Camera deleted (soft)');
+    }
+
+    public function restore($id)
+    {
+        $src = CameraSource::onlyTrashed()->findOrFail($id);
+        $src->restore();
+        AuditHelper::log('camera_restored', 'camera_source', (string) $id);
+        return back()->with('success', 'Camera restored');
     }
 }

@@ -39,7 +39,14 @@
                         <td style="font-variant-numeric:tabular-nums;">{{ $e->started_at_frame ?? '—' }}</td>
                         <td><span class="badge @if($e->review_status=="pending") bg-warning text-dark @elseif($e->review_status=="confirmed_suspicious") bg-danger @elseif($e->review_status=="dismissed_normal") bg-success @else bg-info @endif status-badge">{{ $e->review_status }}</span></td>
                         <td><span style="font-variant-numeric:tabular-nums;">{{ $e->confidence ?? $e->rule_score ?? "—" }}</span></td>
-                        <td><a href="{{ route("detection-events.show",$e) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye me-1"></i> Detail</a></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ route("detection-events.show",$e) }}" class="btn btn-outline-primary">Detail</a>
+                                @if(auth()->user()->hasAnyRole(['system_admin','exam_admin']))
+                                <form method="POST" action="{{ route("detection-events.destroy",$e) }}" class="d-inline delete-event-form">@csrf @method("DELETE")<button class="btn btn-outline-danger" data-event="{{ $e->event_type }} Track #{{ $e->temporary_track_id }}">Delete</button></form>
+                                @endif
+                            </div>
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -48,4 +55,9 @@
         <div class="card-footer bg-white d-flex justify-content-between align-items-center" style="font-size:12px;color:#64748b;"><span>Showing {{ $events->firstItem() }}–{{ $events->lastItem() }} of {{ $events->total() }}</span> {{ $events->links() }}</div>
     </div>
 @endif
+@push("scripts")
+<script>
+document.querySelectorAll('.delete-event-form').forEach(f=>{f.addEventListener('submit',e=>{e.preventDefault();const btn=f.querySelector('button');Swal.fire({title:'Delete event?',text:btn.dataset.event,icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',confirmButtonText:'Delete'}).then(r=>{if(r.isConfirmed)f.submit();});});});
+</script>
+@endpush
 @endsection

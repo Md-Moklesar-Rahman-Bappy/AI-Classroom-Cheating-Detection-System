@@ -25,6 +25,9 @@ class DetectionEventController extends Controller
         if ($request->filled('review_status')) {
             $query->where('review_status', $request->review_status);
         }
+        if ($request->boolean('trashed')) {
+            $query->onlyTrashed();
+        }
         $events = $query->paginate(15)->withQueryString();
 
         return view('detection-events.index', compact('events'));
@@ -36,5 +39,51 @@ class DetectionEventController extends Controller
         AuditHelper::log('event_viewed', 'detection_event', (string) $detectionEvent->id);
 
         return view('detection-events.show', compact('detectionEvent'));
+    }
+
+    public function destroy(Request $request, DetectionEvent $detectionEvent)
+    {
+        if (! auth()->user()->hasAnyRole(['system_admin', 'exam_admin'])) {
+            abort(403);
+        }
+        if ($detectionEvent->review_status === 'confirmed_suspicious' && ! $request->boolean('force')) {
+            return back()->withErrors(['event' => 'Reviewed confirmed events require force flag']);
+        }
+        $id = $detectionEvent->id;
+        $detectionEvent->delete();
+        AuditHelper::log('event_deleted', 'detection_event', (string) $id, 'success', ['event_type' => $detectionEvent->event_type]);
+
+        return redirect()->route('detection-events.index')->with('success', 'Event deleted (soft)');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        if (! auth()->user()->hasAnyRole(['system_admin', 'exam_admin'])) {
+            abort(403);
+        }
+        $ids = $request->input('ids', []);
+        if (empty($ids)) return back()->withErrors(['ids' => 'No selection']);
+        $count = DetectionEvent::whereIn('id', $ids)->delete();
+        AuditHelper::log('event_bulk_deleted', 'detection_event', implode(',', $ids), 'success', ['count' => $count]);
+
+        return back()->with('success', "$count events deleted");
+    }
+
+    public function restore(Request $request, $id)
+    {
+        if (! auth()->user()->hasAnyRole(['system_admin', 'exam_admin'])) {
+            abort(403);
+        }
+        $ev = DetectionEvent::onlyTrashed()->findOrFail($id);
+        $ev->restore();
+        AuditHelper::log('event_restored', 'detection_event', (string) $id);
+
+        return back()->with('success', 'Event restored');
+    }
+
+    public function trashed()
+    {
+        $events = DetectionEvent::onlyTrashed()->with(['job'])->paginate(15);
+        return view('detection-events.index', compact('events'));
     }
 }
