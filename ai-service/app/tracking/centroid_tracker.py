@@ -64,3 +64,15 @@ class SimpleCentroidTracker(Tracker):
             self.tracks[tid] = Track(track_id=tid, bbox=det, hits=1, missing=0, age=1)
 
         return list(self.tracks.values())
+
+    def get_last_known_bbox(self, track_id: int) -> dict | None:
+        tr = self.tracks.get(track_id)
+        if tr is None:
+            return None
+        b = tr.bbox.bbox
+        return {
+            "x_min": float(b.x_min),
+            "y_min": float(b.y_min),
+            "x_max": float(b.x_max),
+            "y_max": float(b.y_max),
+        }

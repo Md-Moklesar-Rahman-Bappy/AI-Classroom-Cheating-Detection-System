@@ -94,3 +94,28 @@ Fields:
 
 ## Example (Phase 4 run)
 - 15 frames left with `window 15, min_supporting 8, cooldown 45` -> 1 behavior event at frame 9 -> 1 JPG `evidence/<job_id>/<job_id>_<uuid>.jpg` with behavior `event_id`, plus phone events if any; total evidence limited to events, not frames.
+
+## Phase 5 Evidence Annotation (Annotated Screenshots)
+Each `EvidenceRecord` now stores annotated screenshot with single-subject highlight:
+```json
+{
+  "evidence_id": "uuid",
+  "event_id": "uuid",
+  "job_id": "uuid",
+  "frame_number": 12,
+  "timestamp_seconds": 1.2,
+  "track_id": 4,
+  "event_code": "B1",
+  "event_label": "Looking Left",
+  "bbox": {"x_min": 100, "y_min": 120, "x_max": 180, "y_max": 220},
+  "image_width": 640,
+  "image_height": 360,
+  "file_checksum": "sha256",
+  "storage_path": "evidence/{job_id}/{job_id}_{evidence_id}.jpg"
+}
+```
+- Screenshot is annotated via `EvidenceAnnotator`: only event subject gets thick colored box + filled plate `Track #X / Event Label / Frame + Timestamp`; other students gray 1px or omitted.
+- Color policy: D1 green, D2 blue, B1/B2/B3 orange, B4 red.
+- D2 phone events store `track_id` (nearest student), `associated_track_bbox` (student box used for annotation), `phone_bbox` (phone box), `bbox` = student box if associated else phone box.
+- B4 stores `bbox` = last known position before disappearance; label `Possible Seat Departure`.
+- See `docs/EVIDENCE_ANNOTATION_SYSTEM.md` for full spec.

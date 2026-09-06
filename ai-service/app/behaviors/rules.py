@@ -2,7 +2,7 @@ import uuid
 
 from ..orientation.models import OrientationObservation
 from .config import BehaviorConfig
-from .models import BehaviorEvent
+from .models import BEHAVIOR_CATEGORY_MAP, BEHAVIOR_CODE_MAP, BEHAVIOR_LABEL_MAP, BehaviorEvent
 
 
 class TemporalRule:
@@ -40,15 +40,29 @@ class TemporalRule:
     ) -> BehaviorEvent:
         start = buf[0]
         end = buf[-1]
+        code = BEHAVIOR_CODE_MAP.get(typ, "B1")
+        label = BEHAVIOR_LABEL_MAP.get(typ, typ)
+        category = BEHAVIOR_CATEGORY_MAP.get(code, "behavior")
+        bbox = (
+            end.supporting_geometry.get("bbox")
+            if isinstance(end.supporting_geometry, dict)
+            else None
+        )
         return BehaviorEvent(
             event_id=str(uuid.uuid4()),
             job_id=job_id,
             track_id=track_id,
             event_type=typ,
+            event_code=code,
+            event_label=label,
+            event_category=category,
             start_frame=frame - len(buf) + 1,
             end_frame=frame,
             start_time=start.timestamp,
             end_time=end.timestamp,
+            frame_number=frame,
+            timestamp_seconds=end.timestamp,
+            bbox=bbox,
             observation_count=len(buf),
             supporting_observations=len(
                 [o for o in buf if o.orientation_state in ("left", "right", "backward", "forward")]
@@ -146,17 +160,59 @@ class LookingBackwardRule(TemporalRule):
         return None
 
 
+class ExcessiveHeadMovementRule(TemporalRule):
+    def observe_with_job(self, obs, frame, job_id):
+        buf = self._buffer_for(obs.track_id)
+        buf.append(obs)
+        window = self.config.head_movement_window or self.config.window_size
+        if len(buf) > window:
+            self.buffers[obs.track_id] = buf[-window:]
+            buf = self.buffers[obs.track_id]
+        if self._should_suppress(obs.track_id, frame):
+            return None
+        if len(buf) < max(6, window // 2):
+            return None
+        switches = 0
+        valid_states = {"left", "right", "backward", "forward"}
+        filtered = [o.orientation_state for o in buf if o.orientation_state in valid_states]
+        if len(filtered) < 4:
+            return None
+        for i in range(1, len(filtered)):
+            if filtered[i] != filtered[i - 1]:
+                if {filtered[i], filtered[i - 1]} <= {"left", "right"} or "backward" in {
+                    filtered[i],
+                    filtered[i - 1],
+                }:
+                    switches += 1
+        covers_lr = "left" in filtered and "right" in filtered
+        instability = switches >= self.config.head_movement_switch_threshold and covers_lr
+        if instability:
+            missing = sum(1 for o in buf if o.orientation_state in ("uncertain", "unavailable"))
+            if missing <= self.config.max_missing:
+                self.last_event_frame[obs.track_id] = frame
+                return self._make_event(
+                    obs.track_id, job_id, "Excessive Head Movement", buf, frame, missing
+                )
+        return None
+
+
 class LeavingSeatRule(TemporalRule):
     def __init__(self, config: BehaviorConfig):
         super().__init__(config)
         self.absence: dict[int, int] = {}
         self.last_seen: dict[int, int] = {}
+        self.last_known_bbox: dict[int, dict] = {}
+        self.last_seen_time: dict[int, float] = {}
 
-    def mark_seen(self, track_id: int, frame: int):
+    def mark_seen(self, track_id: int, frame: int, bbox: dict | None = None, timestamp: float = 0):
         self.last_seen[track_id] = frame
         self.absence[track_id] = 0
+        if bbox is not None:
+            self.last_known_bbox[track_id] = dict(bbox)
+        if timestamp:
+            self.last_seen_time[track_id] = timestamp
 
-    def mark_missing(self, track_id: int, frame: int) -> BehaviorEvent | None:
+    def mark_missing(self, track_id: int, frame: int, timestamp: float = 0) -> BehaviorEvent | None:
         if track_id not in self.last_seen:
             return None
         if self._should_suppress(track_id, frame):
@@ -167,15 +223,22 @@ class LeavingSeatRule(TemporalRule):
             if self.last_event_frame.get(track_id, -999) + self.config.cooldown_frames > frame:
                 return None
             self.last_event_frame[track_id] = frame
+            bbox = self.last_known_bbox.get(track_id)
             return BehaviorEvent(
                 event_id=str(uuid.uuid4()),
                 job_id="",
                 track_id=track_id,
                 event_type="Leaving Seat",
+                event_code="B4",
+                event_label="Possible Seat Departure",
+                event_category="behavior",
                 start_frame=self.last_seen[track_id],
                 end_frame=frame,
-                start_time=0,
-                end_time=0,
+                start_time=self.last_seen_time.get(track_id, 0),
+                end_time=timestamp,
+                frame_number=frame,
+                timestamp_seconds=timestamp,
+                bbox=bbox,
                 observation_count=absence,
                 supporting_observations=absence,
                 missing_observations=absence,
@@ -187,6 +250,62 @@ class LeavingSeatRule(TemporalRule):
 
     def observe_with_job(self, obs, frame, job_id):
         return None
+
+
+class TrackingLostRule:
+    def __init__(self, config: BehaviorConfig):
+        self.config = config
+        self.last_event_frame: dict[int, int] = {}
+        self.last_seen: dict[int, int] = {}
+        self.last_known_bbox: dict[int, dict] = {}
+        self.last_seen_time: dict[int, float] = {}
+
+    def mark_seen(self, track_id: int, frame: int, bbox: dict | None = None, timestamp: float = 0):
+        self.last_seen[track_id] = frame
+        if bbox is not None:
+            self.last_known_bbox[track_id] = dict(bbox)
+        if timestamp:
+            self.last_seen_time[track_id] = timestamp
+
+    def mark_missing(self, track_id: int, frame: int, timestamp: float = 0) -> BehaviorEvent | None:
+        if track_id not in self.last_seen:
+            return None
+        last = self.last_event_frame.get(track_id)
+        if last is not None and (frame - last) < self.config.tracking_lost_cooldown:
+            return None
+        absence = frame - self.last_seen[track_id]
+        if (
+            absence >= self.config.tracking_lost_frames
+            and absence < self.config.leaving_absence_frames
+        ):
+            self.last_event_frame[track_id] = frame
+            bbox = self.last_known_bbox.get(track_id)
+            return BehaviorEvent(
+                event_id=str(uuid.uuid4()),
+                job_id="",
+                track_id=track_id,
+                event_type="Tracking Lost",
+                event_code="S3",
+                event_label="Tracking Lost",
+                event_category="system",
+                start_frame=self.last_seen[track_id],
+                end_frame=frame,
+                start_time=self.last_seen_time.get(track_id, 0),
+                end_time=timestamp,
+                frame_number=frame,
+                timestamp_seconds=timestamp,
+                bbox=bbox,
+                observation_count=absence,
+                supporting_observations=absence,
+                missing_observations=absence,
+                config_version=self.config.config_version,
+                method_version="centroid-v1",
+                explanation=f"Tracking lost: absence {absence} frames >= {self.config.tracking_lost_frames} (track cannot be recovered)",
+            )
+        return None
+
+    def is_insufficient(self, obs: OrientationObservation) -> bool:
+        return False
 
 
 class InsufficientEvidenceRule:

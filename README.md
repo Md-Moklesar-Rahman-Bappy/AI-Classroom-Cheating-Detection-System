@@ -369,6 +369,10 @@ The project supports:
 
 ---
 
+# Evidence Annotation
+
+Every screenshot highlights only the triggering student (Track #X + Event Label + timestamp) with color policy D1 green, D2 blue, B1/B2/B3 orange, B4 red; others gray. See `docs/EVIDENCE_ANNOTATION_SYSTEM.md`.
+
 # Evidence Generation
 
 The system may collect:

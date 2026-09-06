@@ -82,6 +82,9 @@ em --> ED; em --> OD
 mc_ --> OD: metrics dashboard
 ```
 
+## Evidence Annotation (Phase 5)
+Annotated screenshots are produced by `EvidenceAnnotator` (single-subject highlight with color policy D1 green, D2 blue, B1/B2/B3 orange, B4 red; others gray). `DetectionEvent` now carries `track_id/bbox/event_code` and `BehaviorEvent` carries `bbox/frame_number/timestamp_seconds/event_code/label`; phone events associate to nearest track (300px); B4 uses last-known bbox. Details in `docs/EVIDENCE_ANNOTATION_SYSTEM.md`.
+
 ## Shared-Engine Diagram
 
 The single shared AI detection engine serves both operating modes. Input adapters differ; the core pipeline is identical.

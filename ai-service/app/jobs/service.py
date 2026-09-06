@@ -11,7 +11,12 @@ from ..behaviors.engine import TemporalEventEngine
 from ..core.logging import get_logger
 from ..detection.base import ObjectDetector
 from ..events.repository import EventRepository
-from ..events.rules import MobilePhoneEventRule, create_events_for_detections
+from ..events.rules import (
+    MobilePhoneEventRule,
+    MultiplePersonsRule,
+    create_d3_events,
+    create_events_for_detections,
+)
 from ..evidence.manager import EvidenceManager
 from ..inputs.recorded import RecordedVideoInput
 from ..inputs.scheduler import FrameScheduler
@@ -60,8 +65,18 @@ class RecordedAnalysisService:
         orientation_right_threshold: float = 0.15,
         orientation_backward_aspect: float = 1.8,
         orientation_method_version: str = "geometric-v1",
+        multiple_persons_threshold: int = 2,
+        multiple_persons_iou_threshold: float = 0.3,
+        head_movement_switch_threshold: int = 4,
+        head_movement_window: int = 15,
+        tracking_lost_frames: int = 10,
     ):
         self.job_repo = job_repo
+        self.multiple_persons_threshold = multiple_persons_threshold
+        self.multiple_persons_iou_threshold = multiple_persons_iou_threshold
+        self.head_movement_switch_threshold = head_movement_switch_threshold
+        self.head_movement_window = head_movement_window
+        self.tracking_lost_frames = tracking_lost_frames
         self.event_repo = event_repo
         self.evidence_manager = evidence_manager
         self.detector = detector
@@ -183,6 +198,11 @@ class RecordedAnalysisService:
         sched = FrameScheduler(process_every_n_frames, target_width, target_height)
         renderer = BoundingBoxRenderer()
         rule = MobilePhoneEventRule(cooldown_frames=self.event_cooldown_frames)
+        d3_rule = MultiplePersonsRule(
+            threshold=self.multiple_persons_threshold,
+            iou_threshold=self.multiple_persons_iou_threshold,
+            cooldown_frames=self.event_cooldown_frames,
+        )
         tracker = SimpleCentroidTracker(
             max_distance=self.tracking_max_distance, max_missing=self.tracking_max_missing
         )
@@ -268,15 +288,38 @@ class RecordedAnalysisService:
                 track_count = len(all_track_ids)
 
                 observations = []
+                track_bbox_map: dict[int, dict] = {}
                 for tr in tracks:
                     obs = orientation_estimator.estimate(tr, packet.timestamp_seconds)
+                    try:
+                        tb = tr.bbox.bbox
+                        bbox_dict = {
+                            "x_min": float(tb.x_min),
+                            "y_min": float(tb.y_min),
+                            "x_max": float(tb.x_max),
+                            "y_max": float(tb.y_max),
+                        }
+                        obs.supporting_geometry["bbox"] = bbox_dict
+                        track_bbox_map[tr.track_id] = bbox_dict
+                    except Exception:
+                        pass
                     observations.append(obs)
 
                 current_tids = {tr.track_id for tr in tracks}
                 for obs in observations:
-                    temporal_engine.mark_seen(obs.track_id, packet.frame_index)
+                    bbox_for_track = track_bbox_map.get(obs.track_id)
+                    temporal_engine.mark_seen(
+                        obs.track_id,
+                        packet.frame_index,
+                        bbox=bbox_for_track,
+                        timestamp=packet.timestamp_seconds,
+                    )
                     evs = temporal_engine.process_observation(obs, packet.frame_index, job.job_id)
                     for ev in evs:
+                        if ev.bbox is None and bbox_for_track is not None:
+                            ev.bbox = dict(bbox_for_track)
+                            ev.frame_number = packet.frame_index
+                            ev.timestamp_seconds = packet.timestamp_seconds
                         behavior_events_for_job.append(ev)
                         job.event_count += 1
                         if evidence_enabled:
@@ -286,6 +329,9 @@ class RecordedAnalysisService:
                                 ev.event_id,
                                 packet.frame_index,
                                 packet.timestamp_seconds,
+                                event_obj=ev,
+                                tracks=tracks,
+                                detections=dets,
                             )
                             if rec:
                                 evidence_records.append(rec)
@@ -296,7 +342,10 @@ class RecordedAnalysisService:
                         missing_tids.append(tid)
                 if missing_tids:
                     leaving_evs = temporal_engine.mark_missing_tracks(
-                        missing_tids, packet.frame_index, job.job_id
+                        missing_tids,
+                        packet.frame_index,
+                        job.job_id,
+                        timestamp=packet.timestamp_seconds,
                     )
                     for ev in leaving_evs:
                         behavior_events_for_job.append(ev)
@@ -308,6 +357,9 @@ class RecordedAnalysisService:
                                 ev.event_id,
                                 packet.frame_index,
                                 packet.timestamp_seconds,
+                                event_obj=ev,
+                                tracks=tracks,
+                                detections=dets,
                             )
                             if rec:
                                 evidence_records.append(rec)
@@ -315,7 +367,11 @@ class RecordedAnalysisService:
                 phones = rule.should_emit(packet.frame_index, dets)
                 if phones:
                     events = create_events_for_detections(
-                        job.job_id, packet.frame_index, packet.timestamp_seconds, phones
+                        job.job_id,
+                        packet.frame_index,
+                        packet.timestamp_seconds,
+                        phones,
+                        tracks=tracks,
                     )
                     for ev in events:
                         self.event_repo.add(ev)
@@ -327,12 +383,42 @@ class RecordedAnalysisService:
                                 ev.event_id,
                                 packet.frame_index,
                                 packet.timestamp_seconds,
+                                event_obj=ev,
+                                tracks=tracks,
+                                detections=dets,
                             )
                             if rec:
                                 evidence_records.append(rec)
                             else:
                                 error_count += 1
                     rule.record_emission(packet.frame_index)
+
+                if d3_rule.should_emit(packet.frame_index, dets, tracks):
+                    d3_events = create_d3_events(
+                        job.job_id,
+                        packet.frame_index,
+                        packet.timestamp_seconds,
+                        dets,
+                        tracks=tracks,
+                        seat_region=self.behavior_config.seat_region,
+                    )
+                    for ev in d3_events:
+                        self.event_repo.add(ev)
+                        job.event_count += 1
+                        if evidence_enabled:
+                            rec = self.evidence_manager.save_snapshot(
+                                frame_proc,
+                                job.job_id,
+                                ev.event_id,
+                                packet.frame_index,
+                                packet.timestamp_seconds,
+                                event_obj=ev,
+                                tracks=tracks,
+                                detections=dets,
+                            )
+                            if rec:
+                                evidence_records.append(rec)
+                    d3_rule.record_emission(packet.frame_index)
 
                 behavior_for_frame = [
                     ev for ev in behavior_events_for_job if ev.end_frame == packet.frame_index
@@ -370,6 +456,10 @@ class RecordedAnalysisService:
                         "min_duration_frames": self.behavior_config.min_duration_frames,
                         "cooldown_frames": self.behavior_config.cooldown_frames,
                         "leaving_absence_frames": self.behavior_config.leaving_absence_frames,
+                        "multiple_persons_threshold": self.behavior_config.multiple_persons_threshold,
+                        "head_movement_switch_threshold": self.behavior_config.head_movement_switch_threshold,
+                        "head_movement_window": self.behavior_config.head_movement_window,
+                        "tracking_lost_frames": self.behavior_config.tracking_lost_frames,
                     },
                 }
                 duration = max(0.001, time.time() - t_start)

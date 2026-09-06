@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     app_name: str = "AI Classroom Cheating Detection - AI Service"
-    app_version: str = "0.3.0"
+    app_version: str = "0.4.0"
     environment: str = Field(default="development", description="development|production")
     debug: bool = False
     log_level: str = "INFO"
@@ -40,7 +40,14 @@ class Settings(BaseSettings):
     behavior_min_duration: int = 10
     behavior_cooldown_frames: int = 45
     behavior_leaving_absence: int = 30
-    behavior_config_version: str = "v1"
+    behavior_config_version: str = "v2"
+
+    multiple_persons_threshold: int = 2
+    multiple_persons_iou_threshold: float = 0.3
+    head_movement_switch_threshold: int = 4
+    head_movement_window: int = 15
+    tracking_lost_frames: int = 10
+    tracking_lost_cooldown: int = 30
 
     allowed_video_mimes: list[str] = [
         "video/mp4",

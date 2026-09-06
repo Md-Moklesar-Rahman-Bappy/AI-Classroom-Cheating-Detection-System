@@ -66,6 +66,12 @@ def startup():
                 cooldown_frames=settings.behavior_cooldown_frames,
                 leaving_absence_frames=settings.behavior_leaving_absence,
                 config_version=settings.behavior_config_version,
+                multiple_persons_threshold=settings.multiple_persons_threshold,
+                multiple_persons_iou_threshold=settings.multiple_persons_iou_threshold,
+                head_movement_switch_threshold=settings.head_movement_switch_threshold,
+                head_movement_window=settings.head_movement_window,
+                tracking_lost_frames=settings.tracking_lost_frames,
+                tracking_lost_cooldown=settings.tracking_lost_cooldown,
             )
             _service = RecordedAnalysisService(
                 job_repo=job_repo,
@@ -83,6 +89,11 @@ def startup():
                 orientation_right_threshold=settings.orientation_right_threshold,
                 orientation_backward_aspect=settings.orientation_backward_aspect,
                 orientation_method_version=settings.orientation_method_version,
+                multiple_persons_threshold=settings.multiple_persons_threshold,
+                multiple_persons_iou_threshold=settings.multiple_persons_iou_threshold,
+                head_movement_switch_threshold=settings.head_movement_switch_threshold,
+                head_movement_window=settings.head_movement_window,
+                tracking_lost_frames=settings.tracking_lost_frames,
             )
             set_jobs_service(_service)
             logger.info("Recorded analysis service ready")

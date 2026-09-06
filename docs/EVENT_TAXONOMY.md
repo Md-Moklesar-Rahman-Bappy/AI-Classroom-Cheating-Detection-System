@@ -77,6 +77,9 @@ The interface must include the notice:
 
 No event record is an automatic disciplinary result. Final interpretation remains with authorized human reviewer.
 
+## Evidence Annotation (Phase 5)
+Every evidence screenshot highlights only the triggering track: `Track #X` + `Event Code + Label` (e.g., `B1 Looking Left`, `D2 Mobile Phone Detected`) + frame/timestamp, using color policy D1 green, D2 blue, B1/B2/B3 orange, B4 red; other students gray 1px. Phone D2 associates to nearest track within 300px; B4 uses last known bbox and label `Possible Seat Departure`. See `EVIDENCE_ANNOTATION_SYSTEM.md`.
+
 ## Known Limitations (MVP)
 
 - Single-frame noise does not generate repeated alerts (minimum consecutive observations filter)

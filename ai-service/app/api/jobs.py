@@ -217,17 +217,33 @@ def get_events(job_id: str, service=Depends(get_service)):
     behavior_events = (
         service.get_behavior_events(job_id) if hasattr(service, "get_behavior_events") else []
     )
+
+    def _cat(code: str) -> str:
+        if code.startswith("D"):
+            return "detection"
+        if code.startswith("B"):
+            return "behavior"
+        return "system"
+
     data = [
         {
             "event_id": e.event_id,
             "job_id": e.job_id,
             "event_type": e.event_type,
+            "event_code": getattr(e, "event_code", "D2"),
+            "event_name": getattr(e, "event_type", "Mobile Phone Detected"),
+            "event_label": getattr(e, "event_type", "Mobile Phone Detected"),
+            "event_category": getattr(e, "event_category", _cat(getattr(e, "event_code", "D2"))),
             "frame_number": e.frame_number,
             "timestamp_seconds": e.timestamp_seconds,
+            "timestamp": e.timestamp_seconds,
             "class_id": e.class_id,
             "class_name": e.class_name,
             "confidence": e.confidence,
             "bbox": e.bbox,
+            "track_id": getattr(e, "track_id", None),
+            "associated_track_bbox": getattr(e, "associated_track_bbox", None),
+            "phone_bbox": getattr(e, "phone_bbox", None),
             "requires_review": e.requires_review,
         }
         for e in phone_events
@@ -238,7 +254,17 @@ def get_events(job_id: str, service=Depends(get_service)):
                 "event_id": b.event_id,
                 "job_id": b.job_id,
                 "event_type": b.event_type,
+                "event_code": getattr(b, "event_code", "B1"),
+                "event_name": getattr(b, "event_label", b.event_type),
+                "event_label": getattr(b, "event_label", b.event_type),
+                "event_category": getattr(
+                    b, "event_category", _cat(getattr(b, "event_code", "B1"))
+                ),
                 "track_id": b.track_id,
+                "frame_number": getattr(b, "frame_number", b.end_frame),
+                "timestamp_seconds": getattr(b, "timestamp_seconds", b.end_time),
+                "timestamp": getattr(b, "timestamp_seconds", b.end_time),
+                "bbox": getattr(b, "bbox", None),
                 "start_frame": b.start_frame,
                 "end_frame": b.end_frame,
                 "start_time": b.start_time,
