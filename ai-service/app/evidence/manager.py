@@ -81,7 +81,9 @@ class EvidenceManager:
                         event_obj, "associated_track_bbox", None
                     )
             evidence_id = str(uuid.uuid4())
-            filename = f"{job_id}_{evidence_id}.jpg"
+            safe_track = f"t{track_id}" if track_id is not None else "tX"
+            safe_code = event_code or "UN"
+            filename = f"job_{job_id}_frame_{int(frame_number):06d}_track_{safe_track}_{safe_code}_{evidence_id}.jpg"
             job_dir = self.base_dir / job_id
             job_dir.mkdir(parents=True, exist_ok=True)
             storage_path = job_dir / filename
@@ -89,6 +91,12 @@ class EvidenceManager:
             if not ok:
                 return None
             checksum = self._checksum_file(storage_path)
+            try:
+                print(
+                    f"[Evidence] frame={frame_number} track={track_id} event={event_code or safe_code} bbox={bbox} hash={checksum[:12]} file={filename}"
+                )
+            except Exception:
+                pass
             h, w = frame.shape[0], frame.shape[1]
             return EvidenceRecord(
                 evidence_id=evidence_id,

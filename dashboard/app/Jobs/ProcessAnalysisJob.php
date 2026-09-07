@@ -271,37 +271,88 @@ class ProcessAnalysisJob implements ShouldQueue
             // Try to locate evidence in AI service filesystem (if shared)
             $aiEvidenceBase = base_path('../ai-service/evidence');
             $remoteJobId = $job->remote_job_id;
-            if ($remoteJobId && is_dir($aiEvidenceBase.'/'.$remoteJobId)) {
-                $files = glob($aiEvidenceBase.'/'.$remoteJobId.'/*.jpg');
+            $aiEvidencePath = $aiEvidenceBase.'/'.$remoteJobId;
+            $resolved = realpath($aiEvidencePath) ?: $aiEvidencePath;
+            if ($remoteJobId && is_dir($resolved)) {
+                $files = glob($resolved.'/*.jpg');
                 if (! empty($files)) {
-                    sort($files);
+                    usort($files, fn ($a, $b) => filemtime($a) <=> filemtime($b));
+                    $frameNumber = $evData['frame_number'] ?? $evData['start_frame'] ?? $event->started_at_frame ?? null;
+                    $orderedIds = DetectionEvent::where('analysis_job_id', $job->id)
+                        ->orderBy('started_at_frame')->orderBy('id')->pluck('id')->all();
+                    $eventIndex = array_search($event->id, $orderedIds, true);
+                    if ($eventIndex === false) {
+                        $eventIndex = count($orderedIds) - 1;
+                    }
                     $copiedBasenames = EventEvidence::whereHas('event', fn ($q) => $q->where('analysis_job_id', $job->id))
                         ->pluck('file_path')
                         ->map(fn ($p) => basename($p))
                         ->map(fn ($b) => str_contains($b, '_') ? substr($b, strpos($b, '_') + 1) : $b)
                         ->all();
                     $unused = array_values(array_filter($files, fn ($f) => ! in_array(basename($f), $copiedBasenames)));
-                    if (! empty($unused)) {
+                    if ($frameNumber !== null && ! empty($unused)) {
+                        $src = $unused[0];
+                        // If frame-aware mapping desired, pick by eventIndex
+                        if ($eventIndex !== false && isset($files[$eventIndex])) {
+                            $candidate = $files[$eventIndex];
+                            if (in_array(basename($candidate), array_map('basename', $unused))) {
+                                $src = $candidate;
+                            }
+                        }
+                    } elseif (! empty($unused)) {
                         $src = $unused[0];
                     } else {
-                        $copiedCount = count($copiedBasenames);
-                        $src = $files[$copiedCount % count($files)];
+                        $src = $files[$eventIndex % count($files)];
                     }
+                    \Illuminate\Support\Facades\Log::info('copyEvidence mapping', [
+                        'event_id' => $event->id,
+                        'frame_number' => $frameNumber,
+                        'event_index' => $eventIndex,
+                        'src' => basename($src),
+                        'job_id' => $job->id,
+                        'remote_job_id' => $remoteJobId,
+                        'resolved_path' => $resolved,
+                    ]);
                     $destDir = 'evidence/'.$job->id;
                     $destFilename = $event->id.'_'.basename($src);
                     $destPath = $destDir.'/'.$destFilename;
                     Storage::disk('local')->makeDirectory($destDir);
                     Storage::disk('local')->put($destPath, file_get_contents($src));
-                    EventEvidence::create([
+                    $bboxForOverlay = $evData['bbox'] ?? $evData['associated_track_bbox'] ?? null;
+                    $frameNumberExplicit = $event->started_at_frame;
+                    $eventTypeExplicit = $event->event_type ?? ($evData['event_code'] ?? $evData['event_type'] ?? null);
+                    try {
+                        $hasBbox = \Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'bbox_json');
+                        $hasType = \Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'event_type');
+                    } catch (\Throwable $e) {
+                        $hasBbox = false; $hasType = false;
+                    }
+                    $evDataForInsert = [
                         'detection_event_id' => $event->id,
                         'file_path' => $destPath,
                         'file_type' => 'snapshot',
-                        'frame_number' => $evData['frame_number'] ?? $evData['start_frame'] ?? null,
+                        'frame_number' => $frameNumberExplicit,
                         'captured_at_seconds' => $evData['timestamp_seconds'] ?? $evData['start_time'] ?? null,
                         'width' => null, 'height' => null,
                         'checksum_sha256' => hash_file('sha256', Storage::disk('local')->path($destPath)),
-                    ]);
+                    ];
+                    if ($hasBbox) {
+                        $evDataForInsert['bbox_json'] = $bboxForOverlay ? json_encode($bboxForOverlay) : null;
+                    }
+                    if ($hasType && $eventTypeExplicit) {
+                        $evDataForInsert['event_type'] = $eventTypeExplicit;
+                    }
+                    EventEvidence::create($evDataForInsert);
                     $event->update(['evidence_available' => true]);
+                    $eventTypeRefreshed = DetectionEvent::where('id', $event->id)->value('event_type');
+                    \Illuminate\Support\Facades\Log::info('copyEvidence mapping', [
+                        'event_id' => $event->id,
+                        'event_type' => $eventTypeRefreshed ?? $eventTypeExplicit,
+                        'frame_number' => $frameNumberExplicit,
+                        'src' => basename($src),
+                        'job_id' => $job->id,
+                        'remote_job_id' => $remoteJobId,
+                    ]);
 
                     return;
                 }

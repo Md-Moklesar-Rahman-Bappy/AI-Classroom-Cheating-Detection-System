@@ -1,0 +1,121 @@
+diff --git a/dashboard/app/Jobs/ProcessAnalysisJob.php b/dashboard/app/Jobs/ProcessAnalysisJob.php
+index bf829c6..c6dfb6d 100644
+--- a/dashboard/app/Jobs/ProcessAnalysisJob.php
++++ b/dashboard/app/Jobs/ProcessAnalysisJob.php
+@@ -271,36 +271,89 @@ private function copyEvidence(AnalysisJob $job, DetectionEvent $event, array $ev
+             // Try to locate evidence in AI service filesystem (if shared)
+             $aiEvidenceBase = base_path('../ai-service/evidence');
+             $remoteJobId = $job->remote_job_id;
+-            if ($remoteJobId && is_dir($aiEvidenceBase.'/'.$remoteJobId)) {
+-                $files = glob($aiEvidenceBase.'/'.$remoteJobId.'/*.jpg');
++            $aiEvidencePath = $aiEvidenceBase.'/'.$remoteJobId;
++            $resolved = realpath($aiEvidencePath) ?: $aiEvidencePath;
++            if ($remoteJobId && is_dir($resolved)) {
++                $files = glob($resolved.'/*.jpg');
+                 if (! empty($files)) {
+-                    sort($files);
++                    usort($files, fn ($a, $b) => filemtime($a) <=> filemtime($b));
++                    $frameNumber = $evData['frame_number'] ?? $evData['start_frame'] ?? $event->started_at_frame ?? null;
++                    $orderedIds = DetectionEvent::where('analysis_job_id', $job->id)
++                        ->orderBy('started_at_frame')->orderBy('id')->pluck('id')->all();
++                    $eventIndex = array_search($event->id, $orderedIds, true);
++                    if ($eventIndex === false) {
++                        $eventIndex = count($orderedIds) - 1;
++                    }
+                     $copiedBasenames = EventEvidence::whereHas('event', fn ($q) => $q->where('analysis_job_id', $job->id))
+                         ->pluck('file_path')
+                         ->map(fn ($p) => basename($p))
+                         ->map(fn ($b) => str_contains($b, '_') ? substr($b, strpos($b, '_') + 1) : $b)
+                         ->all();
+                     $unused = array_values(array_filter($files, fn ($f) => ! in_array(basename($f), $copiedBasenames)));
+-                    if (! empty($unused)) {
++                    if ($frameNumber !== null && ! empty($unused)) {
++                        $src = $unused[0];
++                        if ($eventIndex !== false && isset($files[$eventIndex])) {
++                            $candidate = $files[$eventIndex];
++                            if (in_array(basename($candidate), array_map('basename', $unused))) {
++                                $src = $candidate;
++                            }
++                        }
++                    } elseif (! empty($unused)) {
+                         $src = $unused[0];
+                     } else {
+-                        $copiedCount = count($copiedBasenames);
+-                        $src = $files[$copiedCount % count($files)];
++                        $src = $files[$eventIndex % count($files)];
+                     }
++                    \Illuminate\Support\Facades\Log::info('copyEvidence mapping', [
++                        'event_id' => $event->id,
++                        'frame_number' => $frameNumber,
++                        'event_index' => $eventIndex,
++                        'src' => basename($src),
++                        'job_id' => $job->id,
++                        'remote_job_id' => $remoteJobId,
++                        'resolved_path' => $resolved,
++                    ]);
+                     $destDir = 'evidence/'.$job->id;
+                     $destFilename = $event->id.'_'.basename($src);
+                     $destPath = $destDir.'/'.$destFilename;
+                     Storage::disk('local')->makeDirectory($destDir);
+                     Storage::disk('local')->put($destPath, file_get_contents($src));
+-                    EventEvidence::create([
+-                        'detection_event_id' => $event->id,
+-                        'file_path' => $destPath,
+-                        'file_type' => 'snapshot',
+-                        'frame_number' => $evData['frame_number'] ?? $evData['start_frame'] ?? null,
+-                        'captured_at_seconds' => $evData['timestamp_seconds'] ?? $evData['start_time'] ?? null,
+-                        'width' => null, 'height' => null,
+-                        'checksum_sha256' => hash_file('sha256', Storage::disk('local')->path($destPath)),
+-                    ]);
++                    $bboxForOverlay = $evData['bbox'] ?? $evData['associated_track_bbox'] ?? null;
++                    try {
++                        if (\Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'bbox_json')) {
++                            $evDataForInsert = [
++                                'detection_event_id' => $event->id,
++                                'file_path' => $destPath,
++                                'file_type' => 'snapshot',
++                                'frame_number' => $evData['frame_number'] ?? $evData['start_frame'] ?? null,
++                                'captured_at_seconds' => $evData['timestamp_seconds'] ?? $evData['start_time'] ?? null,
++                                'width' => null, 'height' => null,
++                                'checksum_sha256' => hash_file('sha256', Storage::disk('local')->path($destPath)),
++                                'bbox_json' => $bboxForOverlay ? json_encode($bboxForOverlay) : null,
++                            ];
++                        } else {
++                            $evDataForInsert = [
++                                'detection_event_id' => $event->id,
++                                'file_path' => $destPath,
++                                'file_type' => 'snapshot',
++                                'frame_number' => $evData['frame_number'] ?? $evData['start_frame'] ?? null,
++                                'captured_at_seconds' => $evData['timestamp_seconds'] ?? $evData['start_time'] ?? null,
++                                'width' => null, 'height' => null,
++                                'checksum_sha256' => hash_file('sha256', Storage::disk('local')->path($destPath)),
++                            ];
++                        }
++                    } catch (\Throwable $e) {
++                        $evDataForInsert = [
++                            'detection_event_id' => $event->id,
++                            'file_path' => $destPath,
++                            'file_type' => 'snapshot',
++                            'frame_number' => $evData['frame_number'] ?? $evData['start_frame'] ?? null,
++                            'captured_at_seconds' => $evData['timestamp_seconds'] ?? $evData['start_time'] ?? null,
++                            'width' => null, 'height' => null,
++                            'checksum_sha256' => hash_file('sha256', Storage::disk('local')->path($destPath)),
++                        ];
++                    }
++                    EventEvidence::create($evDataForInsert);
+                     $event->update(['evidence_available' => true]);
+ 
+                     return;
+diff --git a/dashboard/app/Models/EventEvidence.php b/dashboard/app/Models/EventEvidence.php
+index 0b7f8d6..9c1f156 100644
+--- a/dashboard/app/Models/EventEvidence.php
++++ b/dashboard/app/Models/EventEvidence.php
+@@ -11,7 +11,7 @@ class EventEvidence extends Model
+ 
+     protected $table = 'event_evidence';
+ 
+-    protected $fillable = ['detection_event_id', 'file_path', 'file_type', 'frame_number', 'captured_at_seconds', 'width', 'height', 'checksum_sha256', 'archived_at'];
++    protected $fillable = ['detection_event_id', 'file_path', 'file_type', 'frame_number', 'captured_at_seconds', 'width', 'height', 'checksum_sha256', 'bbox_json', 'archived_at'];
+ 
+     public function event()
+     {

@@ -11,7 +11,7 @@ class EventEvidence extends Model
 
     protected $table = 'event_evidence';
 
-    protected $fillable = ['detection_event_id', 'file_path', 'file_type', 'frame_number', 'captured_at_seconds', 'width', 'height', 'checksum_sha256', 'archived_at'];
+    protected $fillable = ['detection_event_id', 'file_path', 'file_type', 'frame_number', 'captured_at_seconds', 'width', 'height', 'checksum_sha256', 'bbox_json', 'event_type', 'archived_at'];
 
     public function event()
     {
