@@ -197,7 +197,17 @@ class RecordedAnalysisService:
         src = RecordedVideoInput(job.input_path)
         sched = FrameScheduler(process_every_n_frames, target_width, target_height)
         renderer = BoundingBoxRenderer()
-        rule = MobilePhoneEventRule(cooldown_frames=self.event_cooldown_frames)
+        from ..config.settings import settings as svc_settings
+
+        rule = MobilePhoneEventRule(
+            cooldown_frames=self.event_cooldown_frames,
+            conf_threshold=svc_settings.phone_conf_threshold,
+            min_width=svc_settings.phone_min_width,
+            min_height=svc_settings.phone_min_height,
+            min_area=svc_settings.phone_min_area,
+            aspect_min=svc_settings.phone_aspect_min,
+            aspect_max=svc_settings.phone_aspect_max,
+        )
         d3_rule = MultiplePersonsRule(
             threshold=self.multiple_persons_threshold,
             iou_threshold=self.multiple_persons_iou_threshold,

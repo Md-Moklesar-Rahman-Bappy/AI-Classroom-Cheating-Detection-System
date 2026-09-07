@@ -26,8 +26,15 @@ class Settings(BaseSettings):
     event_cooldown_frames: int = 30
     enable_evidence: bool = True
 
-    tracking_max_distance: float = 80.0
-    tracking_max_missing: int = 10
+    phone_conf_threshold: float = 0.40
+    phone_min_width: int = 30
+    phone_min_height: int = 30
+    phone_min_area: int = 1200
+    phone_aspect_min: float = 0.35
+    phone_aspect_max: float = 2.20
+
+    tracking_max_distance: float = 90.0
+    tracking_max_missing: int = 15
 
     orientation_left_threshold: float = -0.15
     orientation_right_threshold: float = 0.15
@@ -39,14 +46,14 @@ class Settings(BaseSettings):
     behavior_max_missing: int = 4
     behavior_min_duration: int = 10
     behavior_cooldown_frames: int = 45
-    behavior_leaving_absence: int = 30
-    behavior_config_version: str = "v2"
+    behavior_leaving_absence: int = 45
+    behavior_config_version: str = "v2.1-accuracy"
 
     multiple_persons_threshold: int = 2
     multiple_persons_iou_threshold: float = 0.3
     head_movement_switch_threshold: int = 4
     head_movement_window: int = 15
-    tracking_lost_frames: int = 10
+    tracking_lost_frames: int = 15
     tracking_lost_cooldown: int = 30
 
     allowed_video_mimes: list[str] = [

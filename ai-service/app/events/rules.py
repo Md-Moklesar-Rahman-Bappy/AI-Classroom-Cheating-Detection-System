@@ -52,17 +52,51 @@ def associate_phone_to_nearest_track(
 
 
 class MobilePhoneEventRule:
-    def __init__(self, cooldown_frames: int = 30):
+    def __init__(
+        self,
+        cooldown_frames: int = 30,
+        conf_threshold: float = 0.40,
+        min_width: int = 30,
+        min_height: int = 30,
+        min_area: int = 1200,
+        aspect_min: float = 0.35,
+        aspect_max: float = 2.20,
+    ):
         if cooldown_frames < 0:
             raise ValueError("cooldown_frames must be >=0")
         self.cooldown = cooldown_frames
+        self.conf_threshold = conf_threshold
+        self.min_width = min_width
+        self.min_height = min_height
+        self.min_area = min_area
+        self.aspect_min = aspect_min
+        self.aspect_max = aspect_max
         self._last_event_frame: int | None = None
         self._seen_count: int = 0
+        self._filtered_count: int = 0
+
+    def _passes_filters(self, d: DetectionResult) -> bool:
+        if d.confidence < self.conf_threshold:
+            self._filtered_count += 1
+            return False
+        w = d.bbox.x_max - d.bbox.x_min
+        h = d.bbox.y_max - d.bbox.y_min
+        if w < self.min_width or h < self.min_height:
+            self._filtered_count += 1
+            return False
+        if w * h < self.min_area:
+            self._filtered_count += 1
+            return False
+        aspect = w / max(1.0, h)
+        if aspect < self.aspect_min or aspect > self.aspect_max:
+            self._filtered_count += 1
+            return False
+        return True
 
     def should_emit(
         self, frame_index: int, detections: list[DetectionResult]
     ) -> list[DetectionResult]:
-        phones = [d for d in detections if d.class_id == 67]
+        phones = [d for d in detections if d.class_id == 67 and self._passes_filters(d)]
         if not phones:
             return []
         if (
@@ -77,7 +111,14 @@ class MobilePhoneEventRule:
         self._seen_count += 1
 
     def suppression_stats(self) -> dict:
-        return {"events_emitted": self._seen_count, "cooldown": self.cooldown}
+        return {
+            "events_emitted": self._seen_count,
+            "filtered": self._filtered_count,
+            "cooldown": self.cooldown,
+            "conf_threshold": self.conf_threshold,
+            "min_area": self.min_area,
+            "aspect_range": [self.aspect_min, self.aspect_max],
+        }
 
 
 class MultiplePersonsRule:

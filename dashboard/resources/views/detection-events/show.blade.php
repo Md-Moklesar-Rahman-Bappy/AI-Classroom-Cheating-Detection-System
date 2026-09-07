@@ -95,6 +95,44 @@
     </div>
 </div>
 
+<div class="card mt-4 border-primary">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-bottom:1px solid #e2e8f0;">
+        <h5 class="mb-0" style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;"><i class="bi bi-lightbulb me-2 text-primary"></i>Explanation — Why This Alert Fired</h5>
+        <span class="badge bg-primary">Human review required</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3" style="font-size:13px;">
+            <div class="col-6 col-md-3"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;">Event</div><div class="fw-bold">{{ $detectionEvent->event_type }} ({{ $detectionEvent->event_type }})</div><div class="text-muted" style="font-size:11px;">{{ $detectionEvent->event_category ?? '—' }} · {{ $detectionEvent->event_status }}</div></div>
+            <div class="col-6 col-md-3"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;">Track</div><div class="fw-bold"><span class="badge bg-dark">Track #{{ $detectionEvent->temporary_track_id }}</span></div><div class="text-muted" style="font-size:11px;">Frame {{ $detectionEvent->started_at_frame ?? $detectionEvent->ended_at_frame ?? '—' }} · {{ number_format($detectionEvent->started_at_seconds ?? 0,1) }}s</div></div>
+            <div class="col-6 col-md-3"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;">Reason</div>
+                @if(str_contains($detectionEvent->event_type,'Mobile Phone') || $detectionEvent->event_type=='D2')
+                    <div>Phone confidence <strong>{{ $detectionEvent->confidence !== null ? number_format($detectionEvent->confidence,2) : '—' }}</strong> ≥ 0.40</div><div class="text-muted" style="font-size:11px;">Size &amp; aspect filters passed · 300px association</div>
+                @elseif(str_contains($detectionEvent->event_type,'Tracking Lost') || $detectionEvent->event_type=='S3')
+                    @php $abs = ($detectionEvent->ended_at_frame !== null && $detectionEvent->started_at_frame !== null) ? ($detectionEvent->ended_at_frame - $detectionEvent->started_at_frame) : null; @endphp
+                    <div>Track absent for <strong>{{ $abs !== null ? $abs : '≥15' }} frames</strong></div><div class="text-muted" style="font-size:11px;">Threshold 15 frames (was 10) · centroid missing</div>
+                @elseif(str_contains($detectionEvent->event_type,'Seat Departure') || $detectionEvent->event_type=='B4' || $detectionEvent->event_type=='Leaving Seat')
+                    @php $abs = ($detectionEvent->ended_at_frame !== null && $detectionEvent->started_at_frame !== null) ? ($detectionEvent->ended_at_frame - $detectionEvent->started_at_frame) : null; @endphp
+                    <div>Track absent for <strong>{{ $abs !== null ? $abs : '≥45' }} frames</strong></div><div class="text-muted" style="font-size:11px;">Threshold 45 frames (was 30) · MVP proxy</div>
+                @else
+                    <div>Rule score <strong>{{ $detectionEvent->rule_score ?? '—' }}</strong> · confidence {{ $detectionEvent->confidence ?? '—' }}</div><div class="text-muted" style="font-size:11px;">Temporal rule satisfied</div>
+                @endif
+            </div>
+            <div class="col-6 col-md-3"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;">Trigger Rule</div>
+                @if(str_contains($detectionEvent->event_type,'Mobile Phone') || $detectionEvent->event_type=='D2')
+                    <div><code>D2</code> YOLO class 67 + conf≥0.40 + w≥30 h≥30 area≥1200 + aspect 0.35–2.20</div>
+                @elseif(str_contains($detectionEvent->event_type,'Tracking Lost') || $detectionEvent->event_type=='S3')
+                    <div><code>S3</code> 15 ≤ absence &lt; 45 · cooldown 30</div>
+                @elseif(str_contains($detectionEvent->event_type,'Seat Departure') || $detectionEvent->event_type=='B4' || $detectionEvent->event_type=='Leaving Seat')
+                    <div><code>B4</code> absence ≥45 · cooldown 45 · last known bbox</div>
+                @else
+                    <div><code>{{ $detectionEvent->event_type }}</code> temporal window 15 · min_supporting 8 · cooldown 45</div>
+                @endif
+            </div>
+        </div>
+        <div class="alert alert-warning py-2 mt-3 mb-0" style="font-size:12px;"><i class="bi bi-exclamation-triangle me-1"></i> AI-generated alerts indicate observable events and require human review. Alerts are not proof of academic misconduct. <span class="text-muted">— Reviewer must confirm/dismiss.</span></div>
+    </div>
+</div>
+
 <div class="card mt-4">
     <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-bottom:1px solid #e2e8f0;">
         <h5 class="mb-0" style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;"><i class="bi bi-clock-history me-2 text-muted"></i>Audit History</h5>
