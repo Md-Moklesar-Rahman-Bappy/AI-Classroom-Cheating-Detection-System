@@ -545,10 +545,15 @@ Documentation will be available in:
 ```text
 docs/
 ├── INSTALLATION_WINDOWS.md
-├── INSTALLATION_LINUX.md
 ├── CAMERA_SETUP.md
 ├── RECORDED_VIDEO_MODE.md
 ├── LIVE_SURVEILLANCE_MODE.md
+├── ARCHITECTURE.md
+├── EVENT_TAXONOMY_V2.md
+├── EVIDENCE_ANNOTATION_SYSTEM.md
+├── AUDIT_REPORT.md                 # consolidated audits (2026-09-07)
+├── TECHNICAL_SUPPLEMENT.md        # orientation/tracking/benchmark guide
+├── archive/                       # historical reports (27 files, not deleted)
 ```
 
 ---

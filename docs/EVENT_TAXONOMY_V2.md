@@ -31,3 +31,15 @@ Every page shows: "AI-generated alerts indicate observable events and require hu
 
 ## API Fields
 Each event exposes: event_code, event_name, event_label, event_category, track_id, timestamp, frame_number, bbox.
+  
+---  
+## Appendix: Compliance Matrix (merged from /EVENT_COMPLIANCE_MATRIX.md)  
+Source archived: docs\archive\EVENT_COMPLIANCE_MATRIX.md - see that file for full 11-event verification. Summary retained here.  
+  
+Compliance verification: 7 fully compliant, 4 with documented false-positive risks (D2, B4, S3) - see archived matrix for dimensions.  
+  
+---  
+## Appendix: MVP Taxonomy History (merged from docs\EVENT_TAXONOMY.md)  
+V1 archived: docs\archive\EVENT_TAXONOMY.md - retained for historical reference. V2 (11 events) supersedes MVP (6 events) with D3, B5, S3 additions and refined thresholds.  
+  
+V1 summary: D1 Person, D2 Phone, B1 Left, B2 Right, B3 Back, B4 Leaving Seat, S1 Normal, S2 Insufficient - see archived file for full table.  
