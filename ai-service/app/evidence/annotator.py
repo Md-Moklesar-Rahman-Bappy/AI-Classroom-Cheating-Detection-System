@@ -36,6 +36,25 @@ def _bbox_from_dict(bbox: dict) -> tuple[int, int, int, int]:
     return int(bbox["x_min"]), int(bbox["y_min"]), int(bbox["x_max"]), int(bbox["y_max"])
 
 
+def _head_bbox_from_person(bbox: dict, head_ratio: float = 0.35) -> dict:
+    try:
+        x_min, y_min, x_max, y_max = _bbox_from_dict(bbox)
+        w = x_max - x_min
+        h = y_max - y_min
+        if w <= 0 or h <= 0:
+            return bbox
+        head_h = int(h * head_ratio)
+        head_w = int(w * 0.8)
+        cx = (x_min + x_max) // 2
+        hx1 = max(x_min, cx - head_w // 2)
+        hx2 = min(x_max, cx + head_w // 2)
+        hy1 = y_min
+        hy2 = min(y_max, y_min + head_h)
+        return {"x_min": float(hx1), "y_min": float(hy1), "x_max": float(hx2), "y_max": float(hy2)}
+    except Exception:
+        return bbox
+
+
 def _label_for_event(event) -> tuple[str, str]:
     code = getattr(event, "event_code", None) or getattr(event, "event_type", "")
     if hasattr(event, "event_code") and event.event_code in LABEL_MAP:
@@ -75,6 +94,8 @@ class EvidenceAnnotator:
         bbox = getattr(event, "bbox", None)
         if bbox is None:
             bbox = getattr(event, "associated_track_bbox", None)
+        if bbox is not None and getattr(event, "event_code", None) == "B3":
+            bbox = _head_bbox_from_person(bbox, head_ratio=0.30)
         track_id = getattr(event, "track_id", None)
         timestamp = getattr(event, "timestamp_seconds", None)
         if timestamp is None:

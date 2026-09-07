@@ -1,0 +1,44 @@
+diff --git a/dashboard/app/Jobs/ProcessAnalysisJob.php b/dashboard/app/Jobs/ProcessAnalysisJob.php
+index cc1b74a..d4f5a9b 100644
+--- a/dashboard/app/Jobs/ProcessAnalysisJob.php
++++ b/dashboard/app/Jobs/ProcessAnalysisJob.php
+@@ -182,15 +182,37 @@ public function handle(AiServiceClient $client): void
+             $eventsData = $client->getEvents($remoteId, $correlationId);
+             $metricsData = $client->getMetrics($remoteId, $correlationId);
+             $imported = 0;
++            // Build lookup for bbox verification: map by track_id + frame_number for dynamic resolution
++            $eventBboxMap = [];
++            foreach (($eventsData['data'] ?? []) as $tmpEv) {
++                $key = ($tmpEv['track_id'] ?? 'unknown') . ':' . ($tmpEv['frame_number'] ?? $tmpEv['start_frame'] ?? 0);
++                // Prefer bbox from highest confidence person detection (class_id 0) if multiple
++                if (!isset($eventBboxMap[$key]) || (($tmpEv['confidence'] ?? 0) > ($eventBboxMap[$key]['confidence'] ?? -1))) {
++                    $eventBboxMap[$key] = $tmpEv;
++                }
++            }
+             foreach (($eventsData['data'] ?? $eventsData['events'] ?? []) as $ev) {
+                 $raw = $ev['event_type'] ?? $ev['event_code'] ?? 'D2';
+                 $typeMap = ['Mobile Phone Detected'=>'D2','Person Detected'=>'D1','Multiple Persons Detected'=>'D3','Repeated Looking Left'=>'B1','Looking Left'=>'B1','Repeated Looking Right'=>'B2','Looking Right'=>'B2','Looking Backward'=>'B3','Leaving Seat'=>'B4','Possible Seat Departure'=>'B4','Excessive Head Movement'=>'B5','Normal'=>'S1','Insufficient Evidence'=>'S2','Tracking Lost'=>'S3'];
+                 $code = $ev['event_code'] ?? $typeMap[$raw] ?? (in_array($raw, ['D1','D2','D3','B1','B2','B3','B4','B5','S1','S2','S3']) ? $raw : 'B1');
+                 $mapped = $code;
++                // Verify bbox is mapped by object_id/frame_number, not hardcoded index 0
++                // Filter: if ev contains detections array, pick class_id 0 (person) highest confidence
++                $verifiedBbox = $ev['bbox'] ?? $ev['associated_track_bbox'] ?? null;
++                if (isset($ev['detections']) && is_array($ev['detections']) && count($ev['detections']) > 1) {
++                    $persons = array_filter($ev['detections'], fn($d) => ($d['class_id'] ?? $d['class'] ?? 0) == 0);
++                    if (!empty($persons)) {
++                        usort($persons, fn($a,$b) => ($b['confidence'] ?? 0) <=> ($a['confidence'] ?? 0));
++                        $verifiedBbox = $persons[0]['bbox'] ?? $verifiedBbox;
++                    }
++                }
++                // Normalize to image dims 640x360 if bbox is normalized 0-1 (AI may return normalized)
++                if ($verifiedBbox && isset($verifiedBbox['x_min']) && $verifiedBbox['x_max'] <= 1.0) {
++                    $verifiedBbox = [
++                        'x_min' => $verifiedBbox['x_min'] * 640,
++                        'y_min' => $verifiedBbox['y_min'] * 360,
++                        'x_max' => $verifiedBbox['x_max'] * 640,
++                        'y_max' => $verifiedBbox['y_max'] * 360,
++                    ];
++                }
+                 // idempotent sync via event_id
+                 $exists = DetectionEvent::where('id', $ev['event_id'] ?? null)->exists();
+                 if (isset($ev['event_id']) && $exists) {

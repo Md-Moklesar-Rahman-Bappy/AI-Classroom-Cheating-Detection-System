@@ -180,6 +180,24 @@ class ProcessAnalysisJob implements ShouldQueue
             $metricsData = $client->getMetrics($remoteId, $correlationId);
             $imported = 0;
             foreach (($eventsData['data'] ?? $eventsData['events'] ?? []) as $ev) {
+                $verifiedBbox = $ev['bbox'] ?? $ev['associated_track_bbox'] ?? null;
+                if (isset($ev['detections']) && is_array($ev['detections']) && count($ev['detections']) > 1) {
+                    $persons = array_filter($ev['detections'], fn ($d) => ($d['class_id'] ?? $d['class'] ?? 0) == 0);
+                    if (! empty($persons)) {
+                        usort($persons, fn ($a, $b) => ($b['confidence'] ?? 0) <=> ($a['confidence'] ?? 0));
+                        $verifiedBbox = $persons[0]['bbox'] ?? $verifiedBbox;
+                    }
+                }
+                if ($verifiedBbox && isset($verifiedBbox['x_max']) && $verifiedBbox['x_max'] <= 1.0 && $verifiedBbox['x_max'] > 0) {
+                    $verifiedBbox = [
+                        'x_min' => $verifiedBbox['x_min'] * 640,
+                        'y_min' => $verifiedBbox['y_min'] * 360,
+                        'x_max' => $verifiedBbox['x_max'] * 640,
+                        'y_max' => $verifiedBbox['y_max'] * 360,
+                    ];
+                    $ev['bbox'] = $verifiedBbox;
+                    $ev['associated_track_bbox'] = $verifiedBbox;
+                }
                 $raw = $ev['event_type'] ?? $ev['event_code'] ?? 'D2';
                 $typeMap = ['Mobile Phone Detected'=>'D2','Person Detected'=>'D1','Multiple Persons Detected'=>'D3','Repeated Looking Left'=>'B1','Looking Left'=>'B1','Repeated Looking Right'=>'B2','Looking Right'=>'B2','Looking Backward'=>'B3','Leaving Seat'=>'B4','Possible Seat Departure'=>'B4','Excessive Head Movement'=>'B5','Normal'=>'S1','Insufficient Evidence'=>'S2','Tracking Lost'=>'S3'];
                 $code = $ev['event_code'] ?? $typeMap[$raw] ?? (in_array($raw, ['D1','D2','D3','B1','B2','B3','B4','B5','S1','S2','S3']) ? $raw : 'B1');
@@ -256,7 +274,19 @@ class ProcessAnalysisJob implements ShouldQueue
             if ($remoteJobId && is_dir($aiEvidenceBase.'/'.$remoteJobId)) {
                 $files = glob($aiEvidenceBase.'/'.$remoteJobId.'/*.jpg');
                 if (! empty($files)) {
-                    $src = $files[0];
+                    sort($files);
+                    $copiedBasenames = EventEvidence::whereHas('event', fn ($q) => $q->where('analysis_job_id', $job->id))
+                        ->pluck('file_path')
+                        ->map(fn ($p) => basename($p))
+                        ->map(fn ($b) => str_contains($b, '_') ? substr($b, strpos($b, '_') + 1) : $b)
+                        ->all();
+                    $unused = array_values(array_filter($files, fn ($f) => ! in_array(basename($f), $copiedBasenames)));
+                    if (! empty($unused)) {
+                        $src = $unused[0];
+                    } else {
+                        $copiedCount = count($copiedBasenames);
+                        $src = $files[$copiedCount % count($files)];
+                    }
                     $destDir = 'evidence/'.$job->id;
                     $destFilename = $event->id.'_'.basename($src);
                     $destPath = $destDir.'/'.$destFilename;

@@ -1,0 +1,25 @@
+diff --git a/dashboard/app/Jobs/ProcessAnalysisJob.php b/dashboard/app/Jobs/ProcessAnalysisJob.php
+index bf829c6..cc1b74a 100644
+--- a/dashboard/app/Jobs/ProcessAnalysisJob.php
++++ b/dashboard/app/Jobs/ProcessAnalysisJob.php
+@@ -256,7 +256,19 @@ private function copyEvidence(AnalysisJob $job, DetectionEvent $event, array $ev
+             if ($remoteJobId && is_dir($aiEvidenceBase.'/'.$remoteJobId)) {
+                 $files = glob($aiEvidenceBase.'/'.$remoteJobId.'/*.jpg');
+                 if (! empty($files)) {
+-                    $src = $files[0];
++                    sort($files);
++                    $copiedBasenames = EventEvidence::whereHas('event', fn ($q) => $q->where('analysis_job_id', $job->id))
++                        ->pluck('file_path')
++                        ->map(fn ($p) => basename($p))
++                        ->map(fn ($b) => str_contains($b, '_') ? substr($b, strpos($b, '_') + 1) : $b)
++                        ->all();
++                    $unused = array_values(array_filter($files, fn ($f) => ! in_array(basename($f), $copiedBasenames)));
++                    if (! empty($unused)) {
++                        $src = $unused[0];
++                    } else {
++                        $copiedCount = count($copiedBasenames);
++                        $src = $files[$copiedCount % count($files)];
++                    }
+                     $destDir = 'evidence/'.$job->id;
+                     $destFilename = $event->id.'_'.basename($src);
+                     $destPath = $destDir.'/'.$destFilename;

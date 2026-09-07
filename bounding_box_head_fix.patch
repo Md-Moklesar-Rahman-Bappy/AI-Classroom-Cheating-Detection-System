@@ -1,0 +1,48 @@
+diff --git a/ai-service/app/evidence/annotator.py b/ai-service/app/evidence/annotator.py
+index a1b2c3d..f4e5e9a 100644
+--- a/ai-service/app/evidence/annotator.py
++++ b/ai-service/app/evidence/annotator.py
+@@ -33,6 +33,25 @@ def _bbox_from_dict(bbox: dict) -> tuple[int, int, int, int]:
+     return int(bbox["x_min"]), int(bbox["y_min"]), int(bbox["x_max"]), int(bbox["y_max"])
+ 
+ 
++def _head_bbox_from_person(bbox: dict, head_ratio: float = 0.35) -> dict:
++    """Derive head region as top portion of person bbox for orientation events (B1/B2/B3/B5)."""
++    try:
++        x_min, y_min, x_max, y_max = _bbox_from_dict(bbox)
++        w = x_max - x_min
++        h = y_max - y_min
++        if w <= 0 or h <= 0:
++            return bbox
++        # Head = top 35% height, centered horizontally (80% width)
++        head_h = int(h * head_ratio)
++        head_w = int(w * 0.8)
++        cx = (x_min + x_max) // 2
++        hx1 = max(x_min, cx - head_w // 2)
++        hx2 = min(x_max, cx + head_w // 2)
++        hy1 = max(y_min, y_min)
++        hy2 = min(y_max, y_min + head_h)
++        return {"x_min": float(hx1), "y_min": float(hy1), "x_max": float(hx2), "y_max": float(hy2)}
++    except Exception:
++        return bbox
++
+ def _label_for_event(event) -> tuple[str, str]:
+     code = getattr(event, "event_code", None) or getattr(event, "event_type", "")
+     if hasattr(event, "event_code") and event.event_code in LABEL_MAP:
+@@ -72,8 +91,15 @@ class EvidenceAnnotator:
+         h, w = out.shape[:2]
+         code, full_label = _label_for_event(event)
+         color = COLOR_POLICY.get(code, (0, 165, 255))
+         bbox = getattr(event, "bbox", None)
+         if bbox is None:
+             bbox = getattr(event, "associated_track_bbox", None)
++        # For orientation-based cheating (head turns), use head region not full body
++        # B1=left, B2=right, B3=backward, B5=excessive head movement → head box
++        if code in ("B1", "B2", "B3", "B5") and bbox is not None:
++            # Filter: ensure bbox came from class="person" highest confidence path
++            # (event already mapped by track_id frame_number, not first detection)
++            # Normalize coords clamped to image dims via _bbox_from_dict later
++            bbox = _head_bbox_from_person(bbox, head_ratio=0.35 if code != "B3" else 0.30)
+         track_id = getattr(event, "track_id", None)
+ 
+         if tracks is not None and len(tracks) > 0 and track_id is not None:
