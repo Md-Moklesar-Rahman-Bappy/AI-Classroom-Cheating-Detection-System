@@ -116,8 +116,22 @@ class EvidenceManager:
             job_dir = self.base_dir / job_id
             job_dir.mkdir(parents=True, exist_ok=True)
             storage_path = job_dir / filename
-            ok = cv2.imwrite(str(storage_path), frame)
-            if not ok:
+            tmp_path = job_dir / f".tmp_{filename}"
+            ok = cv2.imwrite(str(tmp_path), frame)
+            if not ok or not tmp_path.exists():
+                if tmp_path.exists():
+                    try:
+                        tmp_path.unlink()
+                    except Exception:
+                        pass
+                return None
+            try:
+                tmp_path.replace(storage_path)
+            except Exception:
+                import shutil
+
+                shutil.move(str(tmp_path), str(storage_path))
+            if not storage_path.exists() or storage_path.stat().st_size == 0:
                 return None
             checksum = self._checksum_file(storage_path)
             try:
@@ -181,7 +195,7 @@ class EvidenceManager:
     def save_two_frame_evidence(
         self,
         trigger_frame: np.ndarray,
-        last_detected_frame: np.ndarray,
+        last_detected_frame: np.ndarray | None,
         job_id: str,
         event_obj,
         tracks: list | None = None,
@@ -211,10 +225,15 @@ class EvidenceManager:
         )
         two_frame = getattr(event_obj, "two_frame_evidence", None)
         if trigger_record and two_frame is not None:
-            last_det_frame = np.zeros((360, 640, 3), dtype=np.uint8)
             last_det_frame_number = two_frame.last_detection_frame_number
             last_det_timestamp = two_frame.last_detection_timestamp
             last_det_bbox = two_frame.last_detection_bbox
+            if last_detected_frame is not None:
+                last_det_frame = last_detected_frame.copy()
+            else:
+                last_det_frame = np.zeros((360, 640, 3), dtype=np.uint8)
+                if last_det_bbox is None:
+                    last_det_frame[:] = 30
             if last_det_bbox:
                 last_det_event = type(
                     "TempEvent",

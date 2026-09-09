@@ -9,7 +9,7 @@ class DetectionEvent extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['exam_session_id', 'analysis_job_id', 'model_version_id', 'source_type', 'temporary_track_id', 'event_type', 'event_status', 'started_at_frame', 'ended_at_frame', 'started_at_seconds', 'ended_at_seconds', 'confidence', 'rule_score', 'evidence_available', 'review_status', 'reviewed_by', 'reviewed_at', 'reviewer_note', 'archived_at'];
+    protected $fillable = ['exam_session_id', 'analysis_job_id', 'model_version_id', 'source_type', 'temporary_track_id', 'event_type', 'event_status', 'started_at_frame', 'ended_at_frame', 'started_at_seconds', 'ended_at_seconds', 'confidence', 'rule_score', 'evidence_available', 'review_status', 'reviewed_by', 'reviewed_at', 'reviewer_note', 'archived_at','trigger_frame_number','trigger_timestamp','last_detection_frame_number','last_detection_timestamp','last_detection_bbox_json','absence_processed_frames','absence_source_frames_json','bbox_format','processed_frame_width','processed_frame_height','source_frame_width','source_frame_height','temporal_status','trigger_sha256','last_detected_sha256','evidence_integrity_status','evidence_completeness_status','missing_frame_reason','suppressed_duplicate_count','track_generation','association_confidence','reassociation_reason'];
 
     public const EVENT_CODES = ['D1','D2','D3','B1','B2','B3','B4','B5','S1','S2','S3'];
     public const CATEGORY_MAP = ['D1'=>'detection','D2'=>'detection','D3'=>'detection','B1'=>'behavior','B2'=>'behavior','B3'=>'behavior','B4'=>'behavior','B5'=>'behavior','S1'=>'system','S2'=>'system','S3'=>'system'];

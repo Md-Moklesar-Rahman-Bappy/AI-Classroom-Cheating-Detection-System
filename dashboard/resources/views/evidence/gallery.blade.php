@@ -23,11 +23,11 @@
             <button class="btn btn-sm {{ request()->boolean('trashed') ? 'btn-success' : 'btn-danger' }}">@if(request()->boolean('trashed')) Restore selected @else Delete selected @endif</button>
         </div>
         <div class="row g-3">
-            @foreach($evidences as $ev)
+            @foreach($evidences as $i => $ev)
             <div class="col-12 col-md-6 col-lg-4 col-xl-3">
                 <div class="card h-100">
                     <div class="d-flex justify-content-between align-items-center p-2">
-                        <input type="checkbox" name="ids[]" value="{{ $ev->id }}">
+                        <div class="d-flex gap-1 align-items-center"><span class="badge bg-light text-dark border" style="font-size:10px">{{ $evidences->firstItem()+$i }}</span><input type="checkbox" name="ids[]" value="{{ $ev->id }}"></div>
                         <span class="badge bg-primary" style="font-size:10px;">{{ $ev->file_type }}</span>
                         @if($ev->event)<span class="badge bg-dark" style="font-size:10px;">{{ $ev->event->event_type }} #{{ $ev->event->temporary_track_id }}</span>@endif
                     </div>

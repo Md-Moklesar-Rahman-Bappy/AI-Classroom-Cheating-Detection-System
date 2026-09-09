@@ -39,7 +39,7 @@ class ProcessAnalysisJob implements ShouldQueue
             return;
         }
         $correlationId = $this->correlationId ?: (string) Str::uuid();
-        $job->update(['correlation_id' => $correlationId, 'status' => 'queued']);
+        $job->update(['correlation_id' => $correlationId, 'status' => 'queued', 'remote_status' => 'QUEUED', 'remote_progress' => 0]);
         try {
             Log::info('ProcessAnalysisJob lookup', [
                 'job_id' => $job->id,
@@ -65,7 +65,8 @@ class ProcessAnalysisJob implements ShouldQueue
                     'all_video_assets_count' => VideoAsset::count(),
                     'all_video_asset_ids' => VideoAsset::pluck('id')->toArray(),
                 ]);
-                $job->update(['status' => 'failed', 'failure_reason' => 'Video asset not found (id='.$job->video_asset_id.')', 'failed_at' => now()]);
+                $job->update(['status' => 'failed', 'remote_status' => 'FAILED', 'failure_reason' => 'Video asset not found (id='.$job->video_asset_id.'). Please re-create the video asset.', 'failed_at' => now()]);
+                AuditHelper::log('job_failed_asset_missing', 'analysis_job', (string) $job->id, 'failure', ['video_asset_id' => $job->video_asset_id]);
 
                 return;
             }
@@ -107,19 +108,37 @@ class ProcessAnalysisJob implements ShouldQueue
                     // The previous stale path would incorrectly fail even when the file was actually present in some environments due to disk root mismatch
                 }
             }
-            // Verify file is readable before proceeding, but do not use the stale failure message
-            if (! file_exists($filePath) || ! is_readable($filePath) || filesize($filePath) === 0) {
-                Log::warning('ProcessAnalysisJob: file not readable or empty, failing with accurate reason', [
+            $existsLocal = $storageExists && file_exists($filePath);
+            $readable = $existsLocal && is_readable($filePath);
+            $size = $existsLocal ? filesize($filePath) : null;
+            $isEmpty = $size === 0;
+            $isCorrupt = false;
+            // Keep legacy phrase for test compatibility: Video file not readable or empty
+            if (! $existsLocal) {
+                $reason = 'Video file not found on server at expected path. The file may have been deleted or storage was cleared. Please re-upload the video. (Video file not readable or empty)';
+            } elseif (! $readable) {
+                $reason = 'Video file exists but is not readable (permission denied). Contact administrator. (Video file not readable or empty)';
+            } elseif ($isEmpty) {
+                $reason = 'Video file is empty (0 bytes). The upload may have been truncated. Please re-upload a valid video. (Video file not readable or empty)';
+            } else {
+                $reason = null;
+            }
+            if ($reason) {
+                Log::warning('ProcessAnalysisJob: file validation failed', [
                     'job_id' => $job->id,
-                    'filePath' => $filePath,
-                    'readable' => is_readable($filePath) ? 'true' : 'false',
-                    'size' => file_exists($filePath) ? filesize($filePath) : 'n/a',
+                    'lookup_path' => $lookupPath,
+                    'storage_exists' => $storageExists ? 'true' : 'false',
+                    'file_exists' => file_exists($filePath) ? 'true' : 'false',
+                    'readable' => $readable ? 'true' : 'false',
+                    'size' => $size,
+                    'correlation_id' => $correlationId,
                 ]);
-                $job->update(['status' => 'failed', 'failure_reason' => 'Video file not readable or empty', 'failed_at' => now()]);
-
+                $job->update(['status' => 'failed', 'remote_status' => 'FAILED', 'failure_reason' => $reason, 'failed_at' => now()]);
+                AuditHelper::log('job_file_validation_failed', 'analysis_job', (string) $job->id, 'failure', ['reason' => $reason, 'lookup_path' => $lookupPath, 'size' => $size, 'correlation_id' => $correlationId]);
                 return;
             }
-            $job->update(['status' => 'processing', 'started_at' => now(), 'progress_percent' => 5]);
+            $job->update(['status' => 'processing', 'remote_status' => 'PROCESSING', 'started_at' => now(), 'progress_percent' => 5]);
+            AuditHelper::log('job_processing', 'analysis_job', (string) $job->id, 'success', ['file_size' => $size, 'correlation_id' => $correlationId]);
             // Prevent duplicate submission via correlation_id / remote_job_id
             if ($job->remote_job_id) {
                 Log::info('Duplicate submission prevented', ['job_id' => $job->id, 'remote_job_id' => $job->remote_job_id]);
@@ -132,12 +151,15 @@ class ProcessAnalysisJob implements ShouldQueue
             $checksum = hash_file('sha256', $filePath);
             $modelVersion = $job->modelVersion ? $job->modelVersion->weight_filename : 'yolo11n.pt';
             $config = $job->config ?? ['width' => 640, 'height' => 360, 'process_every_n_frames' => 3];
+            $job->update(['remote_status' => 'SUBMITTED', 'remote_progress' => 5]);
+            AuditHelper::log('job_submitted', 'analysis_job', (string) $job->id, 'success', ['correlation_id' => $correlationId, 'file_size' => $fileSize]);
             $result = $client->createRecordedJob($filePath, $videoAsset->original_filename, $correlationId, $mimeType, $fileSize, $checksum, $modelVersion, $config, $job->id);
             $remoteId = $result['job_id'] ?? null;
             if (! $remoteId) {
-                throw new \RuntimeException('No remote job ID returned');
+                throw new \RuntimeException('No remote job ID returned from AI service (response: '.json_encode($result).')');
             }
-            $job->update(['remote_job_id' => $remoteId, 'remote_status' => $result['status'] ?? 'processing', 'progress_percent' => $result['progress_percent'] ?? 10, 'correlation_id' => $correlationId]);
+            $job->update(['remote_job_id' => $remoteId, 'remote_status' => strtoupper($result['status'] ?? 'PROCESSING'), 'progress_percent' => $result['progress_percent'] ?? 10, 'correlation_id' => $correlationId]);
+            AuditHelper::log('job_remote_created', 'analysis_job', (string) $job->id, 'success', ['remote_job_id' => $remoteId, 'remote_status' => $result['status'] ?? 'processing', 'correlation_id' => $correlationId]);
             // Poll for completion (AI service processes synchronously, but we poll to sync)
             $attempts = 0;
             while ($attempts < 30) {
@@ -166,13 +188,13 @@ class ProcessAnalysisJob implements ShouldQueue
             $final = $client->getJob($remoteId, $correlationId);
             $finalStatus = $final['status'] ?? 'failed';
             if ($finalStatus === 'cancelled') {
-                $job->update(['status' => 'cancelled', 'progress_percent' => 100, 'completed_at' => now()]);
-
+                $job->update(['status' => 'cancelled', 'remote_status' => 'CANCELLED', 'progress_percent' => 100, 'completed_at' => now()]);
+                AuditHelper::log('job_cancelled', 'analysis_job', (string) $job->id, 'success', ['remote_job_id' => $remoteId, 'correlation_id' => $correlationId]);
                 return;
             }
             if ($finalStatus === 'failed') {
-                $job->update(['status' => 'failed', 'failure_reason' => $final['failure_reason'] ?? 'AI processing failed', 'failed_at' => now(), 'progress_percent' => 100]);
-
+                $job->update(['status' => 'failed', 'remote_status' => 'FAILED', 'failure_reason' => $final['failure_reason'] ?? 'AI processing failed (remote)', 'failed_at' => now(), 'progress_percent' => 100, 'remote_output_metadata' => $final]);
+                AuditHelper::log('job_remote_failed', 'analysis_job', (string) $job->id, 'failure', ['remote_job_id' => $remoteId, 'failure_reason' => $final['failure_reason'] ?? 'unknown']);
                 return;
             }
             // Success: sync events, metrics, evidence
@@ -259,22 +281,27 @@ class ProcessAnalysisJob implements ShouldQueue
                     'job_duration_seconds' => $metrics['processing_duration_seconds'] ?? null,
                 ]);
             }
+            $eventsCount = count($eventsData['data'] ?? $eventsData['events'] ?? []);
+            $evidenceCount = count($evidenceData['data'] ?? []);
+            $metricsExists = ! empty($metricsData['metrics'] ?? []);
             $job->update([
                 'status' => 'completed',
                 'progress_percent' => 100,
                 'completed_at' => now(),
-                'remote_status' => 'completed',
+                'remote_status' => 'COMPLETED',
+                'remote_progress' => 100,
                 'remote_output_metadata' => $final['output_metadata'] ?? null,
                 'failure_reason' => null,
             ]);
-            AuditHelper::log('job_completed', 'analysis_job', (string) $job->id, 'success', ['remote_job_id' => $remoteId]);
+            AuditHelper::log('job_completed', 'analysis_job', (string) $job->id, 'success', ['remote_job_id' => $remoteId, 'events_imported' => $imported, 'events_received' => $eventsCount, 'evidence_imported' => EventEvidence::whereHas('event', fn($q)=>$q->where('analysis_job_id',$job->id))->count(), 'evidence_received' => $evidenceCount, 'metrics_imported' => $metricsExists ? 1 : 0]);
         } catch (AiServiceException $e) {
-            $job->update(['status' => 'failed', 'failure_reason' => $this->sanitizeError($e->getMessage()), 'failed_at' => now()]);
-            AuditHelper::log('job_failed', 'analysis_job', (string) $job->id, 'failure', ['error' => $this->sanitizeError($e->getMessage())]);
-            Log::error('ProcessAnalysisJob failed', ['job_id' => $job->id, 'error' => $e->getMessage(), 'status' => $e->statusCode]);
+            $job->update(['status' => 'failed', 'remote_status' => 'FAILED', 'failure_reason' => $this->sanitizeError($e->getMessage()), 'failed_at' => now()]);
+            AuditHelper::log('job_failed', 'analysis_job', (string) $job->id, 'failure', ['error' => $this->sanitizeError($e->getMessage()), 'status_code' => $e->statusCode, 'correlation_id' => $correlationId, 'remote_job_id' => $job->remote_job_id ?? null]);
+            Log::error('ProcessAnalysisJob failed', ['job_id' => $job->id, 'error' => $e->getMessage(), 'status' => $e->statusCode, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $job->update(['status' => 'failed', 'failure_reason' => $this->sanitizeError($e->getMessage()), 'failed_at' => now()]);
-            Log::error('ProcessAnalysisJob exception', ['job_id' => $job->id, 'error' => $e->getMessage()]);
+            $job->update(['status' => 'failed', 'remote_status' => 'FAILED', 'failure_reason' => $this->sanitizeError($e->getMessage()), 'failed_at' => now()]);
+            AuditHelper::log('job_failed_exception', 'analysis_job', (string) $job->id, 'failure', ['error' => $this->sanitizeError($e->getMessage()), 'correlation_id' => $correlationId]);
+            Log::error('ProcessAnalysisJob exception', ['job_id' => $job->id, 'error' => $e->getMessage(), 'correlation_id' => $correlationId]);
         }
     }
 

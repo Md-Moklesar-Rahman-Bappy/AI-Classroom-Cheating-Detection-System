@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "description": "Synthetic regression fixtures - observable events only, not guilt labels. Requires human review.",
+  "fixtures": [
+    {"id": "looking_sideways", "scenario": "looking sideways", "expected": "event not expected", "rule": "B1/B2", "requires_review": true},
+    {"id": "looking_backward_brief", "scenario": "looking backward briefly", "expected": "event expected", "rule": "B3", "requires_review": true},
+    {"id": "stretching", "scenario": "stretching", "expected": "event not expected", "rule": "B3", "requires_review": true},
+    {"id": "adjusting_glasses", "scenario": "adjusting glasses", "expected": "event not expected", "rule": "D2", "requires_review": true},
+    {"id": "touching_face", "scenario": "touching face", "expected": "event not expected", "rule": "B1", "requires_review": true},
+    {"id": "picking_up_object", "scenario": "picking up dropped object", "expected": "event not expected", "rule": "B4", "requires_review": true},
+    {"id": "temporary_occlusion", "scenario": "temporary occlusion", "expected": "event not expected", "rule": "S3", "requires_review": true},
+    {"id": "person_walking_through", "scenario": "another person walking through frame", "expected": "event not expected", "rule": "D3", "requires_review": true},
+    {"id": "leaning_out_of_seat", "scenario": "student leaning out of seat", "expected": "requires review", "rule": "B4", "requires_review": true},
+    {"id": "actual_seat_departure", "scenario": "actual seat departure simulation", "expected": "event expected", "rule": "B4", "requires_review": true},
+    {"id": "camera_shake", "scenario": "camera shake", "expected": "event not expected", "rule": "all", "requires_review": true},
+    {"id": "low_light", "scenario": "low light", "expected": "event not expected", "rule": "all", "requires_review": true},
+    {"id": "partial_visibility", "scenario": "partial body visibility", "expected": "event not expected", "rule": "B1", "requires_review": true},
+    {"id": "crowded_seating", "scenario": "crowded seating", "expected": "requires review", "rule": "D3", "requires_review": true},
+    {"id": "leaving_and_returning", "scenario": "student leaving and returning", "expected": "event expected", "rule": "B4,S3", "requires_review": true},
+    {"id": "track_id_switch", "scenario": "tracker ID switch simulation", "expected": "event not expected", "rule": "S3/B4", "requires_review": true}
+  ],
+  "notes": "All fixtures are synthetic. Do not use real student PII. Expected labels describe observable events requiring human review, not cheating conclusions."
+}

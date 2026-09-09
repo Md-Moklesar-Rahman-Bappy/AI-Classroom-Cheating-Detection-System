@@ -45,7 +45,9 @@
                 <div class="d-flex justify-content-between mb-2"><span class="text-muted">Type</span><span class="badge bg-info status-badge">{{ $detectionEvent->event_type }}</span></div>
                 <div class="d-flex justify-content-between mb-2"><span class="text-muted">Code</span><span class="badge bg-secondary status-badge">{{ $detectionEvent->event_type }}</span></div>
                 <div class="d-flex justify-content-between mb-2"><span class="text-muted">Status</span><span class="badge bg-secondary status-badge">{{ $detectionEvent->event_status }}</span></div>
-                <div class="d-flex justify-content-between mb-2"><span class="text-muted">Confidence</span><span style="font-variant-numeric:tabular-nums;">{{ $detectionEvent->confidence ?? "—" }} <span class="badge bg-secondary status-badge">text+color</span></span></div>
+                <div class="d-flex justify-content-between mb-2"><span class="text-muted">Detection Confidence</span><span style="font-variant-numeric:tabular-nums;">{{ $detectionEvent->confidence !== null ? number_format($detectionEvent->confidence,2) : "Not available" }} </span></div>
+                <div class="d-flex justify-content-between mb-2"><span class="text-muted">Rule Score</span><span style="font-variant-numeric:tabular-nums;">{{ $detectionEvent->rule_score !== null ? number_format($detectionEvent->rule_score,2) : "Not available" }}</span></div>
+                <div class="alert alert-light py-1 mt-2 mb-2" style="font-size:11px">Confidence describes the automated observation, not a final determination.</div>
                 <hr style="border-color:#f1f5f9;">
                 <div style="font-size:12px;color:#64748b;">Frames {{ $detectionEvent->started_at_frame ?? "—" }} – {{ $detectionEvent->ended_at_frame ?? "—" }}<br>Seconds {{ $detectionEvent->started_at_seconds ?? "—" }} – {{ $detectionEvent->ended_at_seconds ?? "—" }}</div>
                 @if($detectionEvent->evidences->isNotEmpty())

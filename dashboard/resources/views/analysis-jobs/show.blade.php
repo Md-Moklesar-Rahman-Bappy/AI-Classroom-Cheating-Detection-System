@@ -1,8 +1,18 @@
 @extends("layouts.bootstrap")
 @section("title","Job Detail")
 @section("content")
+@php
+$diagVideoPath = $analysisJob->videoAsset ? 'video_assets/'.$analysisJob->videoAsset->stored_filename : null;
+$diagExists = $diagVideoPath ? \Illuminate\Support\Facades\Storage::disk('local')->exists($diagVideoPath) : false;
+$diagAbs = $diagVideoPath ? \Illuminate\Support\Facades\Storage::disk('local')->path($diagVideoPath) : null;
+$diagReadable = $diagAbs && file_exists($diagAbs) && is_readable($diagAbs);
+$diagSize = $diagAbs && file_exists($diagAbs) ? filesize($diagAbs) : null;
+$diagEventsReceived = $analysisJob->events()->count();
+$diagEvidenceImported = \App\Models\EventEvidence::whereHas('event', fn($q)=>$q->where('analysis_job_id',$analysisJob->id))->count();
+$diagMetricsImported = $analysisJob->metrics ? 1 : 0;
+@endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
-    <div><h1 class="h4 mb-1" style="font-weight:700">Job {{ Str::limit($analysisJob->id,12) }}</h1><p class="text-muted mb-0" style="font-size:13px">Correlation <code class="text-mono">{{ $analysisJob->correlation_id ?? "—" }}</code> • Remote <code class="text-mono">{{ $analysisJob->remote_job_id ?? "No remote job" }}</code></p></div>
+    <div><h1 class="h4 mb-1" style="font-weight:700">Job {{ Str::limit($analysisJob->id,12) }}</h1><p class="text-muted mb-0" style="font-size:13px">Correlation <code class="text-mono">{{ $analysisJob->correlation_id ?? "—" }}</code> • Remote <code class="text-mono">{{ $analysisJob->remote_job_id ?? "No remote job" }}</code> @if($analysisJob->remote_status)<span class="badge bg-dark ms-1">{{ $analysisJob->remote_status }}</span>@endif</p></div>
     <div class="d-flex gap-2 flex-wrap">
         <a href="{{ route("analysis-jobs.index") }}" class="btn btn-outline-secondary btn-sm">Back to jobs</a>
         @if($analysisJob->status=="completed")<a href="{{ route("reports.show",$analysisJob) }}" class="btn btn-success btn-sm">View Report</a>@endif
@@ -20,7 +30,7 @@
             </div>
             <div class="progress mb-2" style="height:8px"><div class="progress-bar @if($analysisJob->status=="failed") bg-danger @elseif($analysisJob->status=="completed") bg-success @else bg-primary @endif" style="width:{{ $analysisJob->progress_percent }}%"></div></div>
             <div class="d-flex justify-content-between" style="font-size:12px;color:var(--color-text-muted)"><span>Progress from AI service — not invented</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->progress_percent }}%</span></div>
-            @if($analysisJob->failure_reason)<div class="alert alert-danger mt-3 py-2" role="alert" style="font-size:13px"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> Failure: {{ $analysisJob->failure_reason }}</div>@endif
+            @if($analysisJob->failure_reason)<div class="alert alert-danger mt-3 py-2" role="alert" style="font-size:13px"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> Failure: {{ $analysisJob->failure_reason }} @if(! $analysisJob->remote_job_id)<br><small class="text-muted">Remote: No remote job — {{ $analysisJob->remote_status ?? 'not submitted' }}. Correlation: {{ $analysisJob->correlation_id ?? 'none' }}. Check diagnostics below.</small>@endif</div>@endif
             <div class="row g-3 mt-1" style="font-size:13px">
                 <div class="col-6"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Session</div><div class="fw-medium">{{ $analysisJob->session->name ?? "—" }}</div></div>
                 <div class="col-6"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Video Asset</div><div class="fw-medium truncate" title="{{ $analysisJob->videoAsset->original_filename ?? "—" }}">{{ $analysisJob->videoAsset->original_filename ?? "—" }}</div></div>
@@ -46,16 +56,41 @@
             <div class="card-header bg-white"><h2 class="h6 mb-0" style="font-size:13px;letter-spacing:.06em;text-transform:uppercase"><i class="bi bi-speedometer me-2 text-primary" aria-hidden="true"></i>Metrics</h2></div>
             <div class="card-body" style="font-size:13px">
                 @if($analysisJob->metrics)
-                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Source FPS</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->source_fps }}</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Processing FPS</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->processing_fps }}</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Latency</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->detection_latency_ms }} ms</span></div>
-                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Memory</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->memory_mb }} MB</span></div>
-                    <div class="d-flex justify-content-between"><span class="text-muted">Frames</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->frames_processed ?? "—" }} / {{ $analysisJob->metrics->frames_total ?? "—" }}</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Source FPS</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->source_fps ?? "—" }}</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Processing FPS</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->processing_fps ?? "—" }}</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Latency</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->detection_latency_ms ?? "—" }} ms</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Memory</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->memory_mb ?? "—" }} MB</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted">Dropped Frames</span><span>{{ $analysisJob->metrics->dropped_frames ?? 0 }}</span></div>
+                    <div class="d-flex justify-content-between"><span class="text-muted">Frames</span><span style="font-variant-numeric:tabular-nums">{{ $analysisJob->metrics->dropped_frames !== null ? "—" : "—" }}</span></div>
+                @elseif(in_array($analysisJob->status,['failed','cancelled']))
+                    <div class="empty-state" style="padding:16px"><div class="empty-icon" style="width:36px;height:36px;font-size:16px"><i class="bi bi-info-circle" aria-hidden="true"></i></div><p class="text-muted mb-0" style="font-size:13px">Waiting for processing — job {{ $analysisJob->status }} before metrics generated. No polling. Check diagnostics.</p></div>
                 @else
                     <div class="empty-state" style="padding:16px"><div class="empty-icon" style="width:36px;height:36px;font-size:16px"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div><p class="text-muted mb-0" style="font-size:13px">Metrics not yet available — polling. Use Sync to refresh.</p></div>
                 @endif
+                @if($analysisJob->metrics)<div class="text-muted mt-2" style="font-size:11px">Metrics generated only from real AI processing — never invented.</div>@endif
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header bg-white"><h2 class="h6 mb-0" style="font-size:13px;letter-spacing:.06em;text-transform:uppercase"><i class="bi bi-tools me-2 text-warning" aria-hidden="true"></i>Analysis Diagnostics</h2></div>
+    <div class="card-body" style="font-size:13px">
+        <div class="row g-2">
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Video Exists</div><span class="badge @if($diagExists) bg-success @else bg-danger @endif">{{ $diagExists ? 'Yes' : 'No' }}</span></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Video Readable</div><span class="badge @if($diagReadable) bg-success @else bg-danger @endif">{{ $diagReadable ? 'Yes' : 'No' }}</span></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">File Size</div><span style="font-variant-numeric:tabular-nums">{{ $diagSize !== null ? number_format($diagSize).' bytes' : '—' }}</span></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Remote Job Status</div><span class="badge bg-dark">{{ $analysisJob->remote_status ?? 'none' }}</span></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Remote Job ID</div><code class="text-mono" style="font-size:11px">{{ $analysisJob->remote_job_id ?? 'No remote job' }}</code></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Correlation ID</div><code class="text-mono" style="font-size:11px">{{ $analysisJob->correlation_id ?? '—' }}</code></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Frames Processed</div><span>{{ $analysisJob->metrics->processing_fps ?? '—' }} @if($analysisJob->remote_output_metadata) ({{ $analysisJob->remote_output_metadata['processed_frames'] ?? '?' }}) @endif</span></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Events Imported</div><span class="badge bg-primary">{{ $diagEventsReceived }}</span> / {{ $analysisJob->events()->withTrashed()->count() }} total</div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Evidence Imported</div><span class="badge bg-primary">{{ $diagEvidenceImported }}</span></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Metrics Imported</div><span class="badge @if($diagMetricsImported) bg-success @else bg-secondary @endif">{{ $diagMetricsImported ? 'Yes' : 'No' }}</span></div>
+            <div class="col-6 col-md-4"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Last Sync</div><span>{{ $analysisJob->updated_at?->diffForHumans() ?? '—' }}</span></div>
+            <div class="col-12"><div class="text-muted" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Failure Reason</div><span class="text-danger" style="font-size:12px">{{ $analysisJob->failure_reason ?? '—' }}</span></div>
+        </div>
+        <div class="alert alert-light py-2 mt-3 mb-0" style="font-size:11px">Diagnostics show real values only — no invented data. Video path: <code class="text-mono">{{ $diagVideoPath ?? 'none' }}</code></div>
     </div>
 </div>
 

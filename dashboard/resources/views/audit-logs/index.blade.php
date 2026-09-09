@@ -42,10 +42,11 @@
 <div class="table-responsive">
 <table class="table table-hover align-middle mb-0" style="font-size:13px">
 <caption class="visually-hidden">Audit logs — action, actor, target, result, time</caption>
-<thead><tr><th>Action</th><th>Actor</th><th>Target</th><th>Result</th><th>Time</th></tr></thead>
+<thead><tr><th style="width:40px">SL</th><th>Action</th><th>Actor</th><th>Target</th><th>Result</th><th>Time</th></tr></thead>
 <tbody>
-@forelse($logs as $l)
+@forelse($logs as $i => $l)
 <tr>
+<td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $logs->firstItem()+$i }}</td>
 <td><span class="badge bg-light text-dark border status-badge">{{ $l->action }}</span></td>
 <td><code class="text-mono" style="font-size:11px">{{ $l->actor_id ?? "system" }}</code></td>
 <td><span class="badge bg-dark status-badge text-mono" style="font-size:11px">{{ $l->target_type }}:{{ Str::limit($l->target_id,8) }}</span></td>

@@ -87,12 +87,30 @@ class AnalysisJobController extends Controller
             'video_asset_id' => $request->video_asset_id,
             'model_version_id' => $request->model_version_id,
             'status' => 'pending',
+            'remote_status' => 'QUEUED',
+            'remote_progress' => 0,
             'config' => ['width' => 640, 'height' => 360, 'process_every_n_frames' => 3, 'confidence' => 0.25],
             'progress_percent' => 0,
             'correlation_id' => (string) Str::uuid(),
             'created_by' => auth()->id(),
         ]);
-        AuditHelper::log('job_created', 'analysis_job', (string) $job->id, 'success', ['source_type' => $job->source_type]);
+        if ($request->source_type === 'recorded_video' && $request->video_asset_id) {
+            $asset = VideoAsset::find($request->video_asset_id);
+            if ($asset) {
+                $path = 'video_assets/'.$asset->stored_filename;
+                $exists = \Illuminate\Support\Facades\Storage::disk('local')->exists($path);
+                $abs = \Illuminate\Support\Facades\Storage::disk('local')->path($path);
+                $readable = $exists && file_exists($abs) && is_readable($abs) && filesize($abs) > 0;
+                if (! $readable) {
+                    $reason = ! $exists ? 'Video file not found on server (missing storage). Please re-upload.' : (! file_exists($abs) ? 'Video file path mismatch on server.' : (! is_readable($abs) ? 'Video file not readable (permission denied).' : 'Video file is empty (0 bytes). Please re-upload.'));
+                    $job->update(['status' => 'failed', 'remote_status' => 'FAILED', 'failure_reason' => $reason, 'failed_at' => now()]);
+                    AuditHelper::log('job_validation_failed', 'analysis_job', (string) $job->id, 'failure', ['reason' => $reason, 'asset_id' => $asset->id, 'path' => $path, 'exists' => $exists, 'file_exists' => file_exists($abs) ? 'yes' : 'no', 'size' => file_exists($abs) ? filesize($abs) : null]);
+                    \Illuminate\Support\Facades\Log::warning('Analysis job validation failed before dispatch', ['job_id' => $job->id, 'reason' => $reason, 'path' => $path]);
+                    return redirect()->route('analysis-jobs.show', $job)->withErrors(['video' => $reason]);
+                }
+            }
+        }
+        AuditHelper::log('job_created', 'analysis_job', (string) $job->id, 'success', ['source_type' => $job->source_type, 'correlation_id' => $job->correlation_id, 'remote_status' => 'QUEUED']);
         // Dispatch async processing - do not block controller
         ProcessAnalysisJob::dispatch($job->id, $job->correlation_id);
 
@@ -123,7 +141,13 @@ class AnalysisJobController extends Controller
     {
         $this->authorize('view', $analysisJob);
         if (! $analysisJob->remote_job_id) {
-            return back()->withErrors(['job' => 'No remote job to sync']);
+            $reason = $analysisJob->failure_reason ? 'Remote job not created: '.$analysisJob->failure_reason : 'No remote job to sync - job never submitted to AI service (status: '.$analysisJob->status.', remote_status: '.($analysisJob->remote_status ?? 'none').', correlation: '.($analysisJob->correlation_id ?? 'none').')';
+            \Illuminate\Support\Facades\Log::warning('Sync no remote job', ['job_id' => $analysisJob->id, 'status' => $analysisJob->status, 'remote_status' => $analysisJob->remote_status]);
+            AuditHelper::log('job_sync_no_remote', 'analysis_job', (string) $analysisJob->id, 'failure', ['reason' => $reason, 'status' => $analysisJob->status, 'remote_status' => $analysisJob->remote_status]);
+            if ($analysisJob->status !== 'failed' && $analysisJob->remote_status !== 'FAILED') {
+                $analysisJob->update(['remote_status' => 'SYNC_ERROR']);
+            }
+            return back()->withErrors(['job' => $reason]);
         }
         try {
             $remote = $client->getJob($analysisJob->remote_job_id, $analysisJob->correlation_id);

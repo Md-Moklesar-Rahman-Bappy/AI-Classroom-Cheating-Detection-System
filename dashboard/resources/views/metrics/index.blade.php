@@ -41,10 +41,10 @@
 <div class="table-responsive d-none d-md-block">
 <table class="table table-hover align-middle mb-0" style="font-size:13px">
 <caption class="visually-hidden">Per-job metrics — job, FPS, latency, CPU, memory</caption>
-<thead><tr><th>Job</th><th>FPS</th><th>Latency</th><th>CPU</th><th>Memory</th></tr></thead>
+<thead><tr><th style="width:40px">SL</th><th>Job</th><th>FPS</th><th>Latency</th><th>CPU</th><th>Memory</th></tr></thead>
 <tbody>
-@forelse($metrics as $m)
-<tr><td><span class="badge bg-dark status-badge text-mono">#{{ Str::limit($m->analysis_job_id,8) }}</span></td><td style="font-variant-numeric:tabular-nums">{{ $m->processing_fps ?? "—" }}</td><td style="font-variant-numeric:tabular-nums">{{ $m->detection_latency_ms ?? "—" }}@if($m->detection_latency_ms)<span class="text-muted" style="font-size:11px">ms</span>@endif</td><td style="font-variant-numeric:tabular-nums">{{ $m->cpu_percent ?? "—" }}@if($m->cpu_percent)<span class="text-muted" style="font-size:11px">%</span>@endif</td><td style="font-variant-numeric:tabular-nums">{{ $m->memory_mb ?? "—" }}@if($m->memory_mb)<span class="text-muted" style="font-size:11px">MB</span>@endif</td></tr>
+@forelse($metrics as $i => $m)
+<tr><td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $metrics->firstItem()+$i }}</td><td><span class="badge bg-dark status-badge text-mono">#{{ Str::limit($m->analysis_job_id,8) }}</span></td><td style="font-variant-numeric:tabular-nums">{{ $m->processing_fps ?? "—" }}</td><td style="font-variant-numeric:tabular-nums">{{ $m->detection_latency_ms ?? "—" }}@if($m->detection_latency_ms)<span class="text-muted" style="font-size:11px">ms</span>@endif</td><td style="font-variant-numeric:tabular-nums">{{ $m->cpu_percent ?? "—" }}@if($m->cpu_percent)<span class="text-muted" style="font-size:11px">%</span>@endif</td><td style="font-variant-numeric:tabular-nums">{{ $m->memory_mb ?? "—" }}@if($m->memory_mb)<span class="text-muted" style="font-size:11px">MB</span>@endif</td></tr>
 @empty
 <tr><td colspan="5" class="text-center text-muted py-4">No metrics yet.</td></tr>
 @endforelse
@@ -52,9 +52,9 @@
 </table>
 </div>
 <div class="d-md-none p-2">
-@foreach($metrics as $m)
+@foreach($metrics as $i => $m)
 <div class="card p-3 mb-2">
-<div class="d-flex justify-content-between align-items-center"><span class="badge bg-dark status-badge text-mono">#{{ Str::limit($m->analysis_job_id,8) }}</span><span class="text-muted" style="font-size:11px">{{ $m->processing_fps ?? "—" }} FPS</span></div>
+<div class="d-flex justify-content-between align-items-center"><span class="badge bg-light text-dark border" style="font-size:10px">{{ $metrics->firstItem()+$i }}</span><span class="badge bg-dark status-badge text-mono">#{{ Str::limit($m->analysis_job_id,8) }}</span><span class="text-muted" style="font-size:11px">{{ $m->processing_fps ?? "—" }} FPS</span></div>
 <div class="d-flex gap-3 mt-2" style="font-size:12px"><span class="text-muted">Latency {{ $m->detection_latency_ms ?? "—" }}ms</span><span class="text-muted">CPU {{ $m->cpu_percent ?? "—" }}%</span><span class="text-muted">{{ $m->memory_mb ?? "—" }}MB</span></div>
 </div>
 @endforeach

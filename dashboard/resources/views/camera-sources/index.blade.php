@@ -20,10 +20,11 @@
 <div class="table-responsive">
 <table class="table table-hover align-middle mb-0" style="font-size:13px">
 <caption class="visually-hidden">Camera sources — name, type, identifier, status, credentials</caption>
-<thead><tr><th>Name</th><th>Type</th><th>Identifier</th><th>Status</th><th>Credentials</th><th style="width:160px">Actions</th></tr></thead>
+<thead><tr><th style="width:40px">SL</th><th>Name</th><th>Type</th><th>Identifier</th><th>Status</th><th>Credentials</th><th style="width:160px">Actions</th></tr></thead>
 <tbody>
-@foreach($sources as $s)
+@foreach($sources as $i => $s)
 <tr>
+<td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $sources->firstItem()+$i }}</td>
 <td><div class="fw-medium truncate" style="max-width:180px" title="{{ $s->name }}">{{ $s->name }}</div><div class="text-muted text-mono" style="font-size:11px">ID {{ Str::limit($s->id,8) }}</div></td>
 <td><span class="badge bg-light text-dark border status-badge"><i class="bi bi-camera-video me-1" aria-hidden="true"></i>{{ $s->source_type }}</span></td>
 <td><code class="text-mono" title="{{ $s->identifier }}">{{ Str::limit($s->identifier,34) }}</code> <button class="btn btn-sm btn-link p-0 ms-1" onclick="navigator.clipboard.writeText('{{ $s->identifier }}')" aria-label="Copy identifier" title="Copy"><i class="bi bi-copy" style="font-size:12px" aria-hidden="true"></i></button></td>

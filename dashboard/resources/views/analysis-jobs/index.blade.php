@@ -18,10 +18,11 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size:13px">
                 <caption class="visually-hidden">Analysis jobs — ID, session, status, progress, actions</caption>
-                <thead><tr><th>ID</th><th>Session</th><th>Source</th><th>Model</th><th>Status</th><th>Progress</th><th>Created</th><th style="width:320px">Actions</th></tr></thead>
+                <thead><tr><th style="width:40px">SL</th><th>ID</th><th>Session</th><th>Source</th><th>Model</th><th>Status</th><th>Progress</th><th>Created</th><th style="width:320px">Actions</th></tr></thead>
                 <tbody>
-                @foreach($jobs as $j)
+                @foreach($jobs as $i => $j)
                 <tr>
+                    <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $jobs->firstItem()+$i }}</td>
                     <td><code class="text-mono" title="{{ $j->id }}">{{ Str::limit($j->id,8) }}</code></td>
                     <td><div class="fw-medium">{{ $j->session->name ?? "—" }}</div><div class="text-muted" style="font-size:11px">ID {{ Str::limit($j->exam_session_id,8) }}</div></td>
                     <td><span class="badge bg-light text-dark border status-badge">{{ $j->source_type }}</span></td>

@@ -25,10 +25,11 @@
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover mb-0" id="eventsTable" style="font-size:13px;">
-                <thead><tr><th>Type</th><th>Track</th><th>Time</th><th>Frame</th><th>Review</th><th>Confidence</th><th>Actions</th></tr></thead>
+                <thead><tr><th style="width:40px">SL</th><th>Type</th><th>Track</th><th>Time</th><th>Frame</th><th>Review</th><th>Confidence</th><th>Actions</th></tr></thead>
                 <tbody>
-                    @foreach($events as $e)
+                    @foreach($events as $i => $e)
                     <tr>
+                        <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $events->firstItem()+$i }}</td>
                         <td>
                             @php $code=$e->event_type; $catMap=['D1'=>'detection','D2'=>'detection','D3'=>'detection','B1'=>'behavior','B2'=>'behavior','B3'=>'behavior','B4'=>'behavior','B5'=>'behavior','S1'=>'system','S2'=>'system','S3'=>'system']; $cat=$catMap[$code]??'unknown'; @endphp
                             <span class="badge @if(str_starts_with($code,'D') && $code=='D2') bg-primary @elseif($code=='D3') bg-warning text-dark @elseif(str_starts_with($code,'D')) bg-success @elseif($code=='B4') bg-danger @elseif(str_starts_with($code,'S')) bg-secondary @else bg-warning text-dark @endif status-badge">{{ $code }}</span>

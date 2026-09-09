@@ -14,10 +14,24 @@ class SimpleCentroidTracker(Tracker):
         self.max_missing = max_missing
         self.next_id = 1
         self.tracks: dict[int, Track] = {}
+        self.generations: dict[int, int] = {}
+        self.last_seen_frame: dict[int, int] = {}
+        self.expiry_frames: int = 90
 
     def reset(self) -> None:
         self.tracks.clear()
+        self.generations.clear()
+        self.last_seen_frame.clear()
         self.next_id = 1
+
+    def get_generation(self, track_id: int) -> int:
+        return self.generations.get(track_id, 1)
+
+    def is_expired(self, track_id: int, current_frame: int) -> bool:
+        last = self.last_seen_frame.get(track_id)
+        if last is None:
+            return True
+        return (current_frame - last) > self.expiry_frames
 
     def update(self, detections: list[DetectionResult]) -> list[Track]:
         person_dets = [d for d in detections if d.class_id == 0]
@@ -28,6 +42,7 @@ class SimpleCentroidTracker(Tracker):
                 self.tracks[tid] = Track(track_id=tid, bbox=det, hits=1, missing=0, age=1)
             return list(self.tracks.values())
 
+        current_frame = getattr(self, "_current_frame", 0)
         unmatched_tracks = set(self.tracks.keys())
         unmatched_dets = []
         for det in person_dets:
@@ -62,6 +77,12 @@ class SimpleCentroidTracker(Tracker):
             tid = self.next_id
             self.next_id += 1
             self.tracks[tid] = Track(track_id=tid, bbox=det, hits=1, missing=0, age=1)
+            self.generations[tid] = 1
+            self.last_seen_frame[tid] = current_frame
+
+        for tid in list(self.tracks.keys()):
+            if tid not in unmatched_tracks:
+                self.last_seen_frame[tid] = current_frame
 
         return list(self.tracks.values())
 

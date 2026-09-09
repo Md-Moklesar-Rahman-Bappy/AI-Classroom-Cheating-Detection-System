@@ -95,6 +95,13 @@ Fields:
 ## Example (Phase 4 run)
 - 15 frames left with `window 15, min_supporting 8, cooldown 45` -> 1 behavior event at frame 9 -> 1 JPG `evidence/<job_id>/<job_id>_<uuid>.jpg` with behavior `event_id`, plus phone events if any; total evidence limited to events, not frames.
 
+## Temporal-Staleness Fix (2026-09-09) — Two-Frame Evidence for S3/B4
+- Defect: S3/B4 drew historical last_known_bbox (e.g. (24,126)-(209,233) from frame ~222) over trigger frame 267. Correct xyxy/scaling, wrong temporal pairing.
+- Fix: EvidenceManager.save_two_frame_evidence() saves TWO images per S3/B4 event: trigger frame (metadata only, no stale bbox) + last-detected frame (full-person bbox).
+- EvidenceRecord now stores separately: trigger_frame_number/trigger_timestamp, last_detection_frame_number/last_detection_timestamp, last_detection_bbox, two_frame_evidence, bbox_format, processed/source frame sizes.
+- Filenames distinguish mode: ..._trigger_...jpg vs ..._last_detected_...jpg. Frame buffer (60 frames) retains last-detected image when available; fallback shows Last known position unavailable.
+- B3 unaffected: same-frame full-person bbox only.
+
 ## Phase 5 Evidence Annotation (Annotated Screenshots)
 Each `EvidenceRecord` now stores annotated screenshot with single-subject highlight:
 ```json

@@ -10,6 +10,7 @@ from ..behaviors.config import BehaviorConfig
 from ..behaviors.engine import TemporalEventEngine
 from ..core.logging import get_logger
 from ..detection.base import ObjectDetector
+from ..events.dedup import EventDeduplicator
 from ..events.repository import EventRepository
 from ..events.rules import (
     MobilePhoneEventRule,
@@ -95,6 +96,11 @@ class RecordedAnalysisService:
         self.orientation_method_version = orientation_method_version
         self.behavior_events: dict[str, list] = {}
         self.evidence_records: dict[str, list] = {}
+        self.deduplicator = EventDeduplicator(
+            cooldown_frames=self.behavior_config.cooldown_frames or 45,
+            default_cooldown_seconds=5.0,
+        )
+        self.suppressed_duplicates: dict[str, int] = {}
 
     def _validate_upload(self, temp_path: Path, original_filename: str) -> None:
         ext = Path(original_filename).suffix.lower()
@@ -271,6 +277,8 @@ class RecordedAnalysisService:
                 raise RuntimeError("Cannot open output writer")
 
             all_track_ids: set[int] = set()
+            frame_buffer: dict[int, any] = {}
+            frame_buffer_limit = 60
             for packet in src.frames():
                 if job.cancel_requested:
                     job.transition(JobStatus.cancelling)
@@ -285,6 +293,13 @@ class RecordedAnalysisService:
                     continue
 
                 frame_proc = sched.preprocess(packet.frame)
+                try:
+                    if len(frame_buffer) >= frame_buffer_limit:
+                        oldest = min(frame_buffer.keys())
+                        del frame_buffer[oldest]
+                    frame_buffer[packet.frame_index] = frame_proc.copy()
+                except Exception:
+                    pass
                 t0 = time.time()
                 try:
                     dets = self.detector.detect(frame_proc)
@@ -305,6 +320,7 @@ class RecordedAnalysisService:
                 else:
                     job.progress_percent = 0
 
+                tracker._current_frame = packet.frame_index
                 tracks = tracker.update(dets)
                 for tr in tracks:
                     all_track_ids.add(tr.track_id)
@@ -343,6 +359,27 @@ class RecordedAnalysisService:
                             ev.bbox = dict(bbox_for_track)
                             ev.frame_number = packet.frame_index
                             ev.timestamp_seconds = packet.timestamp_seconds
+                        src = str(job.id) if hasattr(job, "id") else job.job_id
+                        if self.deduplicator.should_suppress(
+                            job.job_id,
+                            src,
+                            ev.track_id,
+                            ev.event_code,
+                            packet.frame_index,
+                            packet.timestamp_seconds,
+                        ):
+                            self.suppressed_duplicates[ev.event_code] = (
+                                self.suppressed_duplicates.get(ev.event_code, 0) + 1
+                            )
+                            continue
+                        self.deduplicator.record(
+                            job.job_id,
+                            src,
+                            ev.track_id,
+                            ev.event_code,
+                            packet.frame_index,
+                            packet.timestamp_seconds,
+                        )
                         behavior_events_for_job.append(ev)
                         job.event_count += 1
                         if evidence_enabled:
@@ -352,10 +389,16 @@ class RecordedAnalysisService:
                                 and hasattr(ev, "two_frame_evidence")
                                 and ev.two_frame_evidence is not None
                             ):
+                                last_fn = getattr(
+                                    ev.two_frame_evidence, "last_detection_frame_number", None
+                                )
+                                last_frame_cached = (
+                                    frame_buffer.get(last_fn) if last_fn is not None else None
+                                )
                                 rec_trigger, rec_last = (
                                     self.evidence_manager.save_two_frame_evidence(
                                         frame_proc,
-                                        frame_proc,
+                                        last_frame_cached,
                                         job.job_id,
                                         ev,
                                         tracks=tracks,
@@ -392,6 +435,28 @@ class RecordedAnalysisService:
                         timestamp=packet.timestamp_seconds,
                     )
                     for ev in leaving_evs:
+                        src = str(job.id) if hasattr(job, "id") else job.job_id
+                        code = getattr(ev, "event_code", "S3")
+                        if self.deduplicator.should_suppress(
+                            job.job_id,
+                            src,
+                            ev.track_id,
+                            code,
+                            packet.frame_index,
+                            packet.timestamp_seconds,
+                        ):
+                            self.suppressed_duplicates[code] = (
+                                self.suppressed_duplicates.get(code, 0) + 1
+                            )
+                            continue
+                        self.deduplicator.record(
+                            job.job_id,
+                            src,
+                            ev.track_id,
+                            code,
+                            packet.frame_index,
+                            packet.timestamp_seconds,
+                        )
                         behavior_events_for_job.append(ev)
                         job.event_count += 1
                         if evidence_enabled:
@@ -401,10 +466,16 @@ class RecordedAnalysisService:
                                 and hasattr(ev, "two_frame_evidence")
                                 and ev.two_frame_evidence is not None
                             ):
+                                last_fn = getattr(
+                                    ev.two_frame_evidence, "last_detection_frame_number", None
+                                )
+                                last_frame_cached = (
+                                    frame_buffer.get(last_fn) if last_fn is not None else None
+                                )
                                 rec_trigger, rec_last = (
                                     self.evidence_manager.save_two_frame_evidence(
                                         frame_proc,
-                                        frame_proc,
+                                        last_frame_cached,
                                         job.job_id,
                                         ev,
                                         tracks=tracks,
@@ -503,6 +574,7 @@ class RecordedAnalysisService:
 
             self.behavior_events[job_id] = behavior_events_for_job
             self.evidence_records[job_id] = evidence_records
+            self.deduplicator.cleanup_job(job_id)
 
             if job.status not in (JobStatus.cancelled, JobStatus.cancelling):
                 job.output_path = str(output_path) if writer else None
@@ -545,6 +617,8 @@ class RecordedAnalysisService:
                     "behavior_event_count": len(behavior_events_for_job),
                     "orientation_method": self.orientation_method_version,
                     "config_version": self.behavior_config.config_version,
+                    "suppressed_duplicate_count": sum(self.suppressed_duplicates.values()),
+                    "suppressed_by_type": dict(self.suppressed_duplicates),
                 }
                 job.progress_percent = 100.0
                 job.transition(JobStatus.completed)

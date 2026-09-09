@@ -24,10 +24,11 @@
 <div class="table-responsive">
 <table class="table table-hover align-middle mb-0" style="font-size:13px">
 <caption class="visually-hidden">Users — name, email, roles, actions</caption>
-<thead><tr><th><a href="{{ route("users.index", array_merge(request()->all(), ["sort"=>"name","dir"=> request("sort")=="name" && request("dir")!="desc" ? "desc":"asc"])) }}" class="text-decoration-none text-muted">Name @if(request("sort")=="name")<i class="bi bi-arrow-{{ request("dir")=="desc" ? "down":"up" }}"></i>@endif</a></th><th><a href="{{ route("users.index", array_merge(request()->all(), ["sort"=>"email","dir"=> request("sort")=="email" && request("dir")!="desc" ? "desc":"asc"])) }}" class="text-decoration-none text-muted">Email</a></th><th>Roles</th><th style="width:120px">Actions</th></tr></thead>
+<thead><tr><th style="width:40px">SL</th><th><a href="{{ route("users.index", array_merge(request()->all(), ["sort"=>"name","dir"=> request("sort")=="name" && request("dir")!="desc" ? "desc":"asc"])) }}" class="text-decoration-none text-muted">Name @if(request("sort")=="name")<i class="bi bi-arrow-{{ request("dir")=="desc" ? "down":"up" }}"></i>@endif</a></th><th><a href="{{ route("users.index", array_merge(request()->all(), ["sort"=>"email","dir"=> request("sort")=="email" && request("dir")!="desc" ? "desc":"asc"])) }}" class="text-decoration-none text-muted">Email</a></th><th>Roles</th><th style="width:120px">Actions</th></tr></thead>
 <tbody>
-@foreach($users as $u)
+@foreach($users as $i => $u)
 <tr>
+<td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $users->firstItem()+$i }}</td>
 <td><div class="d-flex align-items-center gap-2"><span class="d-flex align-items-center justify-content-center flex-shrink-0" style="width:28px;height:28px;border-radius:50%;background:var(--color-primary-soft);color:var(--color-primary);font-size:11px;font-weight:700">{{ strtoupper(substr($u->name,0,1)) }}</span><span class="fw-medium">{{ $u->name }}</span></div></td>
 <td><span class="text-mono" style="font-size:12px">{{ $u->email }}</span></td>
 <td>
