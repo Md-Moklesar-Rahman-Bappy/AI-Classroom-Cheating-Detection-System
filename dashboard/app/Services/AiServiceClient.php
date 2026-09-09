@@ -197,6 +197,17 @@ class AiServiceClient
         return $response->json();
     }
 
+    public function getEvidence(string $jobId, ?string $correlationId = null): array
+    {
+        $correlationId = $correlationId ?? (string) Str::uuid();
+        $response = $this->client($correlationId)->get("/api/v1/jobs/{$jobId}/evidence");
+        if ($response->failed()) {
+            throw new AiServiceException($this->redact($response->body()), $response->status());
+        }
+
+        return $response->json();
+    }
+
     public function cancelJob(string $jobId, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? (string) Str::uuid();

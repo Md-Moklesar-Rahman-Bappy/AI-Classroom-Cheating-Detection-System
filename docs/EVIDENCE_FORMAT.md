@@ -115,7 +115,30 @@ Each `EvidenceRecord` now stores annotated screenshot with single-subject highli
 }
 ```
 - Screenshot is annotated via `EvidenceAnnotator`: only event subject gets thick colored box + filled plate `Track #X / Event Label / Frame + Timestamp`; other students gray 1px or omitted.
-- Color policy: D1 green, D2 blue, B1/B2/B3 orange, B4 red.
+- Color policy: D1 green, D2 blue, B1/B2/B3 orange, B4 red, S3 gray.
 - D2 phone events store `track_id` (nearest student), `associated_track_bbox` (student box used for annotation), `phone_bbox` (phone box), `bbox` = student box if associated else phone box.
-- B4 stores `bbox` = last known position before disappearance; label `Possible Seat Departure`.
-- See `docs/EVIDENCE_ANNOTATION_SYSTEM.md` for full spec.
+- B4/S3 store two-frame evidence: trigger frame (metadata only, no stale bbox) + last-detected frame (full-person bbox). See `docs/EVIDENCE_ANNOTATION_SYSTEM.md` for full spec.
+
+## Phase 5B Two-Frame Evidence (S3/B4 Remediation)
+S3/B4 events now store TWO evidence images plus full temporal metadata:
+```json
+{
+  "event_id": "uuid",
+  "trigger_frame_number": 267,
+  "trigger_timestamp": 8.9,
+  "last_detection_frame_number": 222,
+  "last_detection_timestamp": 7.4,
+  "last_detection_bbox": {"x_min": 24, "y_min": 126, "x_max": 209, "y_max": 233},
+  "absence_processed_frames": 45,
+  "absence_source_frames": [223, 224, ..., 267],
+  "bbox_format": "xyxy",
+  "processed_frame_size": {"width": 640, "height": 360},
+  "source_frame_size": {"width": 64, "height": 48}
+}
+```
+- **Trigger frame image:** Annotated with metadata text only (Track #, label, timestamps, absence count). No person bbox — proves the person was NOT present at trigger time.
+- **Last-detected frame image:** Full-person bbox at last known position with "Last Known Position" label and colored plate.
+- `EvidenceManager.save_two_frame_evidence()` returns `(trigger_record, last_detected_record)`.
+- File naming: `job_{job_id}_frame_{trigger_frame:06d}_track_{tX}_B4_{evidence_id}.jpg` for trigger and `job_{job_id}_frame_{last_det_frame:06d}_track_{tX}_B4_{evidence_id}.jpg` for last-detected.
+- Database migration: `temporal_evidence_migration.sql` adds columns to `detection_events` and `event_evidence` tables.
+- Legacy records marked `legacy_temporal_mismatch` via `repair_temporal_evidence.py`.

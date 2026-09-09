@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 BEHAVIOR_CODE_MAP = {
@@ -42,6 +42,28 @@ BEHAVIOR_CATEGORY_MAP = {
 
 
 @dataclass
+class TwoFrameEvidence:
+    """Temporal evidence linking a historical detection frame to a trigger frame.
+
+    For S3 and B4, the historical bbox belongs to the LAST DETECTED frame,
+    not the trigger frame. This class stores both frames separately.
+    """
+
+    trigger_frame_number: int = 0
+    trigger_timestamp: float = 0.0
+    trigger_frame_path: str = ""
+    last_detection_frame_number: int = 0
+    last_detection_timestamp: float = 0.0
+    last_detection_bbox: dict | None = None
+    last_detection_frame_path: str = ""
+    absence_processed_frames: int = 0
+    absence_source_frames: list[int] = field(default_factory=list)
+    bbox_format: str = "xyxy"
+    processed_frame_size: dict = field(default_factory=lambda: {"width": 640, "height": 360})
+    source_frame_size: dict = field(default_factory=lambda: {"width": 64, "height": 48})
+
+
+@dataclass
 class BehaviorEvent:
     event_id: str
     job_id: str
@@ -64,3 +86,10 @@ class BehaviorEvent:
     explanation: str
     requires_review: bool = True
     event_category: str = "behavior"
+    two_frame_evidence: TwoFrameEvidence | None = None
+    last_detection_frame_number: int = 0
+    last_detection_timestamp: float = 0.0
+    last_detection_bbox: dict | None = None
+    trigger_frame_number: int = 0
+    trigger_timestamp: float = 0.0
+    absence_processed_frames: int = 0

@@ -249,6 +249,7 @@ def get_events(job_id: str, service=Depends(get_service)):
         for e in phone_events
     ]
     for b in behavior_events:
+        two_frame = getattr(b, "two_frame_evidence", None)
         data.append(
             {
                 "event_id": b.event_id,
@@ -274,8 +275,94 @@ def get_events(job_id: str, service=Depends(get_service)):
                 "method_version": b.method_version,
                 "explanation": b.explanation,
                 "requires_review": b.requires_review,
+                "two_frame_evidence": {
+                    "trigger_frame_number": getattr(two_frame, "trigger_frame_number", None)
+                    if two_frame
+                    else None,
+                    "trigger_timestamp": getattr(two_frame, "trigger_timestamp", None)
+                    if two_frame
+                    else None,
+                    "last_detection_frame_number": getattr(
+                        two_frame, "last_detection_frame_number", None
+                    )
+                    if two_frame
+                    else None,
+                    "last_detection_timestamp": getattr(two_frame, "last_detection_timestamp", None)
+                    if two_frame
+                    else None,
+                    "last_detection_bbox": getattr(two_frame, "last_detection_bbox", None)
+                    if two_frame
+                    else None,
+                    "absence_processed_frames": getattr(two_frame, "absence_processed_frames", None)
+                    if two_frame
+                    else None,
+                    "bbox_format": getattr(two_frame, "bbox_format", "xyxy")
+                    if two_frame
+                    else "xyxy",
+                    "processed_frame_size": getattr(two_frame, "processed_frame_size", None)
+                    if two_frame
+                    else None,
+                    "source_frame_size": getattr(two_frame, "source_frame_size", None)
+                    if two_frame
+                    else None,
+                }
+                if two_frame
+                else None,
+                "last_detection_frame_number": getattr(b, "last_detection_frame_number", None),
+                "last_detection_timestamp": getattr(b, "last_detection_timestamp", None),
+                "last_detection_bbox": getattr(b, "last_detection_bbox", None),
+                "trigger_frame_number": getattr(b, "trigger_frame_number", None),
+                "trigger_timestamp": getattr(b, "trigger_timestamp", None),
+                "absence_processed_frames": getattr(b, "absence_processed_frames", None),
             }
         )
+    return {"job_id": job_id, "total": len(data), "data": data}
+
+
+@router.get("/jobs/{job_id}/evidence")
+def get_evidence(job_id: str, service=Depends(get_service)):
+    job = service.job_repo.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    records = (
+        service.get_evidence_for_job(job_id) if hasattr(service, "get_evidence_for_job") else []
+    )
+    data = []
+    for r in records:
+        try:
+            data.append(
+                {
+                    "evidence_id": r.evidence_id,
+                    "event_id": r.event_id,
+                    "job_id": r.job_id,
+                    "frame_number": r.frame_number,
+                    "timestamp_seconds": r.timestamp_seconds,
+                    "track_id": r.track_id,
+                    "event_code": r.event_code,
+                    "event_label": r.event_label,
+                    "bbox": r.bbox,
+                    "bbox_format": getattr(r, "bbox_format", "xyxy"),
+                    "original_frame_size": getattr(r, "original_frame_size", None),
+                    "rendered_frame_size": getattr(r, "rendered_frame_size", None),
+                    "last_valid_detection_frame": getattr(r, "last_valid_detection_frame", None),
+                    "absence_frames": getattr(r, "absence_frames", None),
+                    "trigger_frame_number": getattr(r, "trigger_frame_number", None),
+                    "trigger_timestamp": getattr(r, "trigger_timestamp", None),
+                    "last_detection_frame_number": getattr(r, "last_detection_frame_number", None),
+                    "last_detection_timestamp": getattr(r, "last_detection_timestamp", None),
+                    "last_detection_bbox": getattr(r, "last_detection_bbox", None),
+                    "checksum_sha256": r.file_checksum,
+                    "storage_path": r.storage_path,
+                    "file_name": __import__("pathlib").Path(r.storage_path).name
+                    if r.storage_path
+                    else None,
+                    "render_mode": "trigger"
+                    if r.frame_number == r.trigger_frame_number
+                    else "last_detected",
+                }
+            )
+        except Exception:
+            continue
     return {"job_id": job_id, "total": len(data), "data": data}
 
 

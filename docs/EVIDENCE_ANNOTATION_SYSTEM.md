@@ -39,9 +39,23 @@ Rendered as filled color plate with white text above/below bbox. Timestamp and f
 - Documented in `app/events/rules.py:associate_phone_to_nearest_track`.
 
 ## B4 Possible Seat Departure
-- Uses last known bbox from `LeavingSeatRule.last_known_bbox`.
+- Uses two-frame evidence: `trigger_frame_number` + `last_detection_frame_number`.
+- **Trigger frame rendering:** Shows metadata only (Track #, event label, trigger frame/time, last detected frame/time, absence count). NO stale person bbox drawn.
+- **Last-detected frame rendering:** Shows full-person bbox at last known position with "Last Known Position" label.
 - Label is `B4 Possible Seat Departure` — never "Left classroom" or "Cheated".
-- Annotator draws last known position with red box + B4 plate + timestamp.
+- `TwoFrameEvidence` dataclass stores `trigger_frame_number`, `trigger_timestamp`, `last_detection_frame_number`, `last_detection_timestamp`, `last_detection_bbox`, `absence_processed_frames`, `absence_source_frames`, `bbox_format`, `processed_frame_size`, `source_frame_size`.
+
+## S3 Tracking Lost
+- Two-frame evidence like B4. Absence >=10 frames; trigger frame shows metadata only (no stale bbox). Last-detected frame shows gray full-person bbox.
+- Label `S3 Tracking Lost` — gray box on last-detected frame, metadata-only on trigger frame.
+
+## Two-Frame Evidence System (S3/B4)
+- Root cause fix: Previously, S3/B4 events drew a stale `last_known_bbox` from ~45 frames ago onto the current trigger frame, making the red/gray box appear over empty desk regions.
+- Now `EvidenceAnnotator.annotate()` accepts `render_mode="trigger"` or `render_mode="last_detected"`.
+  - `trigger`: Metadata text only (Track #, label, timestamps, absence count). No person bbox.
+  - `last_detected`: Full-person bbox with "Last Known Position" label.
+- `EvidenceManager.save_two_frame_evidence()` saves TWO images per S3/B4 event: trigger frame + last-detected frame.
+- API returns `two_frame_evidence` object and individual `trigger_frame_number`, `last_detection_frame_number`, etc.
 
 ## D3 Multiple Persons
 - If >=2 persons detected (optionally inside seat_region) then D3 emitted with union bbox, cooldown 30.

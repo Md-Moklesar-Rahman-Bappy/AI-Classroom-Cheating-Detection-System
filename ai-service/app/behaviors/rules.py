@@ -2,7 +2,13 @@ import uuid
 
 from ..orientation.models import OrientationObservation
 from .config import BehaviorConfig
-from .models import BEHAVIOR_CATEGORY_MAP, BEHAVIOR_CODE_MAP, BEHAVIOR_LABEL_MAP, BehaviorEvent
+from .models import (
+    BEHAVIOR_CATEGORY_MAP,
+    BEHAVIOR_CODE_MAP,
+    BEHAVIOR_LABEL_MAP,
+    BehaviorEvent,
+    TwoFrameEvidence,
+)
 
 
 class TemporalRule:
@@ -203,9 +209,11 @@ class LeavingSeatRule(TemporalRule):
         self.last_seen: dict[int, int] = {}
         self.last_known_bbox: dict[int, dict] = {}
         self.last_seen_time: dict[int, float] = {}
+        self.last_known_frame: dict[int, int] = {}
 
     def mark_seen(self, track_id: int, frame: int, bbox: dict | None = None, timestamp: float = 0):
         self.last_seen[track_id] = frame
+        self.last_known_frame[track_id] = frame
         self.absence[track_id] = 0
         if bbox is not None:
             self.last_known_bbox[track_id] = dict(bbox)
@@ -223,7 +231,21 @@ class LeavingSeatRule(TemporalRule):
             if self.last_event_frame.get(track_id, -999) + self.config.cooldown_frames > frame:
                 return None
             self.last_event_frame[track_id] = frame
-            bbox = self.last_known_bbox.get(track_id)
+            last_detection_frame = self.last_known_frame.get(track_id, self.last_seen[track_id])
+            last_detection_timestamp = self.last_seen_time.get(track_id, 0)
+            last_detection_bbox = self.last_known_bbox.get(track_id)
+            two_frame_evidence = TwoFrameEvidence(
+                trigger_frame_number=frame,
+                trigger_timestamp=timestamp,
+                last_detection_frame_number=last_detection_frame,
+                last_detection_timestamp=last_detection_timestamp,
+                last_detection_bbox=last_detection_bbox,
+                absence_processed_frames=absence,
+                absence_source_frames=list(range(last_detection_frame + 1, frame)),
+                bbox_format="xyxy",
+                processed_frame_size={"width": 640, "height": 360},
+                source_frame_size={"width": 64, "height": 48},
+            )
             return BehaviorEvent(
                 event_id=str(uuid.uuid4()),
                 job_id="",
@@ -238,13 +260,20 @@ class LeavingSeatRule(TemporalRule):
                 end_time=timestamp,
                 frame_number=frame,
                 timestamp_seconds=timestamp,
-                bbox=bbox,
+                bbox=last_detection_bbox,
                 observation_count=absence,
                 supporting_observations=absence,
                 missing_observations=absence,
                 config_version=self.config.config_version,
                 method_version="centroid-v1",
                 explanation=f"Prolonged absence {absence} frames >= {self.config.leaving_absence_frames} (MVP proxy: track missing)",
+                two_frame_evidence=two_frame_evidence,
+                last_detection_frame_number=last_detection_frame,
+                last_detection_timestamp=last_detection_timestamp,
+                last_detection_bbox=last_detection_bbox,
+                trigger_frame_number=frame,
+                trigger_timestamp=timestamp,
+                absence_processed_frames=absence,
             )
         return None
 
@@ -259,9 +288,11 @@ class TrackingLostRule:
         self.last_seen: dict[int, int] = {}
         self.last_known_bbox: dict[int, dict] = {}
         self.last_seen_time: dict[int, float] = {}
+        self.last_known_frame: dict[int, int] = {}
 
     def mark_seen(self, track_id: int, frame: int, bbox: dict | None = None, timestamp: float = 0):
         self.last_seen[track_id] = frame
+        self.last_known_frame[track_id] = frame
         if bbox is not None:
             self.last_known_bbox[track_id] = dict(bbox)
         if timestamp:
@@ -279,7 +310,21 @@ class TrackingLostRule:
             and absence < self.config.leaving_absence_frames
         ):
             self.last_event_frame[track_id] = frame
-            bbox = self.last_known_bbox.get(track_id)
+            last_detection_frame = self.last_known_frame.get(track_id, self.last_seen[track_id])
+            last_detection_timestamp = self.last_seen_time.get(track_id, 0)
+            last_detection_bbox = self.last_known_bbox.get(track_id)
+            two_frame_evidence = TwoFrameEvidence(
+                trigger_frame_number=frame,
+                trigger_timestamp=timestamp,
+                last_detection_frame_number=last_detection_frame,
+                last_detection_timestamp=last_detection_timestamp,
+                last_detection_bbox=last_detection_bbox,
+                absence_processed_frames=absence,
+                absence_source_frames=list(range(last_detection_frame + 1, frame)),
+                bbox_format="xyxy",
+                processed_frame_size={"width": 640, "height": 360},
+                source_frame_size={"width": 64, "height": 48},
+            )
             return BehaviorEvent(
                 event_id=str(uuid.uuid4()),
                 job_id="",
@@ -294,13 +339,20 @@ class TrackingLostRule:
                 end_time=timestamp,
                 frame_number=frame,
                 timestamp_seconds=timestamp,
-                bbox=bbox,
+                bbox=last_detection_bbox,
                 observation_count=absence,
                 supporting_observations=absence,
                 missing_observations=absence,
                 config_version=self.config.config_version,
                 method_version="centroid-v1",
                 explanation=f"Tracking lost: absence {absence} frames >= {self.config.tracking_lost_frames} (track cannot be recovered)",
+                two_frame_evidence=two_frame_evidence,
+                last_detection_frame_number=last_detection_frame,
+                last_detection_timestamp=last_detection_timestamp,
+                last_detection_bbox=last_detection_bbox,
+                trigger_frame_number=frame,
+                trigger_timestamp=timestamp,
+                absence_processed_frames=absence,
             )
         return None
 

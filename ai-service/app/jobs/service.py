@@ -94,6 +94,7 @@ class RecordedAnalysisService:
         self.orientation_backward_aspect = orientation_backward_aspect
         self.orientation_method_version = orientation_method_version
         self.behavior_events: dict[str, list] = {}
+        self.evidence_records: dict[str, list] = {}
 
     def _validate_upload(self, temp_path: Path, original_filename: str) -> None:
         ext = Path(original_filename).suffix.lower()
@@ -177,6 +178,18 @@ class RecordedAnalysisService:
 
     def get_behavior_events(self, job_id: str) -> list:
         return self.behavior_events.get(job_id, [])
+
+    def get_evidence_records(self, job_id: str) -> list:
+        return self.evidence_records.get(job_id, [])
+
+    def get_evidence_for_job(self, job_id: str) -> list:
+        recs = self.evidence_records.get(job_id)
+        if recs is not None:
+            return recs
+        try:
+            return self.evidence_manager.list_records_for_job(job_id)
+        except Exception:
+            return []
 
     def process(
         self,
@@ -333,18 +346,39 @@ class RecordedAnalysisService:
                         behavior_events_for_job.append(ev)
                         job.event_count += 1
                         if evidence_enabled:
-                            rec = self.evidence_manager.save_snapshot(
-                                frame_proc,
-                                job.job_id,
-                                ev.event_id,
-                                packet.frame_index,
-                                packet.timestamp_seconds,
-                                event_obj=ev,
-                                tracks=tracks,
-                                detections=dets,
-                            )
-                            if rec:
-                                evidence_records.append(rec)
+                            ev_code = getattr(ev, "event_code", None)
+                            if (
+                                ev_code in ("S3", "B4")
+                                and hasattr(ev, "two_frame_evidence")
+                                and ev.two_frame_evidence is not None
+                            ):
+                                rec_trigger, rec_last = (
+                                    self.evidence_manager.save_two_frame_evidence(
+                                        frame_proc,
+                                        frame_proc,
+                                        job.job_id,
+                                        ev,
+                                        tracks=tracks,
+                                        detections=dets,
+                                    )
+                                )
+                                if rec_trigger:
+                                    evidence_records.append(rec_trigger)
+                                if rec_last:
+                                    evidence_records.append(rec_last)
+                            else:
+                                rec = self.evidence_manager.save_snapshot(
+                                    frame_proc,
+                                    job.job_id,
+                                    ev.event_id,
+                                    packet.frame_index,
+                                    packet.timestamp_seconds,
+                                    event_obj=ev,
+                                    tracks=tracks,
+                                    detections=dets,
+                                )
+                                if rec:
+                                    evidence_records.append(rec)
 
                 missing_tids = []
                 for tid in list(temporal_engine.leaving_rule.last_seen.keys()):
@@ -361,18 +395,39 @@ class RecordedAnalysisService:
                         behavior_events_for_job.append(ev)
                         job.event_count += 1
                         if evidence_enabled:
-                            rec = self.evidence_manager.save_snapshot(
-                                frame_proc,
-                                job.job_id,
-                                ev.event_id,
-                                packet.frame_index,
-                                packet.timestamp_seconds,
-                                event_obj=ev,
-                                tracks=tracks,
-                                detections=dets,
-                            )
-                            if rec:
-                                evidence_records.append(rec)
+                            ev_code = getattr(ev, "event_code", None)
+                            if (
+                                ev_code in ("S3", "B4")
+                                and hasattr(ev, "two_frame_evidence")
+                                and ev.two_frame_evidence is not None
+                            ):
+                                rec_trigger, rec_last = (
+                                    self.evidence_manager.save_two_frame_evidence(
+                                        frame_proc,
+                                        frame_proc,
+                                        job.job_id,
+                                        ev,
+                                        tracks=tracks,
+                                        detections=dets,
+                                    )
+                                )
+                                if rec_trigger:
+                                    evidence_records.append(rec_trigger)
+                                if rec_last:
+                                    evidence_records.append(rec_last)
+                            else:
+                                rec = self.evidence_manager.save_snapshot(
+                                    frame_proc,
+                                    job.job_id,
+                                    ev.event_id,
+                                    packet.frame_index,
+                                    packet.timestamp_seconds,
+                                    event_obj=ev,
+                                    tracks=tracks,
+                                    detections=dets,
+                                )
+                                if rec:
+                                    evidence_records.append(rec)
 
                 phones = rule.should_emit(packet.frame_index, dets)
                 if phones:
@@ -447,6 +502,7 @@ class RecordedAnalysisService:
                     self.job_repo.update(job)
 
             self.behavior_events[job_id] = behavior_events_for_job
+            self.evidence_records[job_id] = evidence_records
 
             if job.status not in (JobStatus.cancelled, JobStatus.cancelling):
                 job.output_path = str(output_path) if writer else None

@@ -178,6 +178,19 @@ class ProcessAnalysisJob implements ShouldQueue
             // Success: sync events, metrics, evidence
             $eventsData = $client->getEvents($remoteId, $correlationId);
             $metricsData = $client->getMetrics($remoteId, $correlationId);
+            $evidenceData = null;
+            try {
+                $evidenceData = $client->getEvidence($remoteId, $correlationId);
+            } catch (\Throwable $e) {
+                Log::warning('evidence fetch failed, fallback to FS only', ['job_id' => $job->id, 'error' => $e->getMessage()]);
+                $evidenceData = ['data' => []];
+            }
+            $evidenceByEventId = [];
+            foreach (($evidenceData['data'] ?? []) as $ed) {
+                if (isset($ed['event_id'])) {
+                    $evidenceByEventId[$ed['event_id']] = $ed;
+                }
+            }
             $imported = 0;
             foreach (($eventsData['data'] ?? $eventsData['events'] ?? []) as $ev) {
                 $verifiedBbox = $ev['bbox'] ?? $ev['associated_track_bbox'] ?? null;
@@ -230,8 +243,8 @@ class ProcessAnalysisJob implements ShouldQueue
                     'review_status' => 'pending',
                 ]);
                 $imported++;
-                // Evidence: try to copy from AI service storage if exists
-                $this->copyEvidence($job, $detection, $ev, $correlationId);
+                $evEvidence = $evidenceByEventId[$ev['event_id'] ?? ''] ?? null;
+                $this->copyEvidence($job, $detection, $ev, $correlationId, $evEvidence);
             }
             // Save metrics
             $metrics = $metricsData['metrics'] ?? [];
@@ -265,103 +278,128 @@ class ProcessAnalysisJob implements ShouldQueue
         }
     }
 
-    private function copyEvidence(AnalysisJob $job, DetectionEvent $event, array $evData, string $correlationId): void
+    private function copyEvidence(AnalysisJob $job, DetectionEvent $event, array $evData, string $correlationId, ?array $evidenceMeta = null): void
     {
         try {
-            // Try to locate evidence in AI service filesystem (if shared)
+            if ($evidenceMeta === null || empty($evidenceMeta['evidence_id'])) {
+                Log::warning('Evidence copy skipped: no evidenceMeta for event', ['event_id' => $event->id, 'remote_event_id' => $evData['event_id'] ?? null]);
+                return;
+            }
             $aiEvidenceBase = base_path('../ai-service/evidence');
             $remoteJobId = $job->remote_job_id;
             $aiEvidencePath = $aiEvidenceBase.'/'.$remoteJobId;
             $resolved = realpath($aiEvidencePath) ?: $aiEvidencePath;
-            if ($remoteJobId && is_dir($resolved)) {
-                $files = glob($resolved.'/*.jpg');
-                if (! empty($files)) {
-                    usort($files, fn ($a, $b) => filemtime($a) <=> filemtime($b));
-                    $frameNumber = $evData['frame_number'] ?? $evData['start_frame'] ?? $event->started_at_frame ?? null;
-                    $orderedIds = DetectionEvent::where('analysis_job_id', $job->id)
-                        ->orderBy('started_at_frame')->orderBy('id')->pluck('id')->all();
-                    $eventIndex = array_search($event->id, $orderedIds, true);
-                    if ($eventIndex === false) {
-                        $eventIndex = count($orderedIds) - 1;
-                    }
-                    $copiedBasenames = EventEvidence::whereHas('event', fn ($q) => $q->where('analysis_job_id', $job->id))
-                        ->pluck('file_path')
-                        ->map(fn ($p) => basename($p))
-                        ->map(fn ($b) => str_contains($b, '_') ? substr($b, strpos($b, '_') + 1) : $b)
-                        ->all();
-                    $unused = array_values(array_filter($files, fn ($f) => ! in_array(basename($f), $copiedBasenames)));
-                    if ($frameNumber !== null && ! empty($unused)) {
-                        $src = $unused[0];
-                        // If frame-aware mapping desired, pick by eventIndex
-                        if ($eventIndex !== false && isset($files[$eventIndex])) {
-                            $candidate = $files[$eventIndex];
-                            if (in_array(basename($candidate), array_map('basename', $unused))) {
-                                $src = $candidate;
-                            }
-                        }
-                    } elseif (! empty($unused)) {
-                        $src = $unused[0];
-                    } else {
-                        $src = $files[$eventIndex % count($files)];
-                    }
-                    \Illuminate\Support\Facades\Log::info('copyEvidence mapping', [
-                        'event_id' => $event->id,
-                        'frame_number' => $frameNumber,
-                        'event_index' => $eventIndex,
-                        'src' => basename($src),
-                        'job_id' => $job->id,
-                        'remote_job_id' => $remoteJobId,
-                        'resolved_path' => $resolved,
-                    ]);
-                    $destDir = 'evidence/'.$job->id;
-                    $destFilename = $event->id.'_'.basename($src);
-                    $destPath = $destDir.'/'.$destFilename;
-                    Storage::disk('local')->makeDirectory($destDir);
-                    Storage::disk('local')->put($destPath, file_get_contents($src));
-                    $bboxForOverlay = $evData['bbox'] ?? $evData['associated_track_bbox'] ?? null;
-                    $frameNumberExplicit = $event->started_at_frame;
-                    $eventTypeExplicit = $event->event_type ?? ($evData['event_code'] ?? $evData['event_type'] ?? null);
-                    try {
-                        $hasBbox = \Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'bbox_json');
-                        $hasType = \Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'event_type');
-                    } catch (\Throwable $e) {
-                        $hasBbox = false; $hasType = false;
-                    }
-                    $evDataForInsert = [
-                        'detection_event_id' => $event->id,
-                        'file_path' => $destPath,
-                        'file_type' => 'snapshot',
-                        'frame_number' => $frameNumberExplicit,
-                        'captured_at_seconds' => $evData['timestamp_seconds'] ?? $evData['start_time'] ?? null,
-                        'width' => null, 'height' => null,
-                        'checksum_sha256' => hash_file('sha256', Storage::disk('local')->path($destPath)),
-                    ];
-                    if ($hasBbox) {
-                        $evDataForInsert['bbox_json'] = $bboxForOverlay ? json_encode($bboxForOverlay) : null;
-                    }
-                    if ($hasType && $eventTypeExplicit) {
-                        $evDataForInsert['event_type'] = $eventTypeExplicit;
-                    }
-                    EventEvidence::create($evDataForInsert);
-                    $event->update(['evidence_available' => true]);
-                    $eventTypeRefreshed = DetectionEvent::where('id', $event->id)->value('event_type');
-                    \Illuminate\Support\Facades\Log::info('copyEvidence mapping', [
-                        'event_id' => $event->id,
-                        'event_type' => $eventTypeRefreshed ?? $eventTypeExplicit,
-                        'frame_number' => $frameNumberExplicit,
-                        'src' => basename($src),
-                        'job_id' => $job->id,
-                        'remote_job_id' => $remoteJobId,
-                    ]);
-
-                    return;
+            $expectedChecksum = $evidenceMeta['checksum_sha256'] ?? $evidenceMeta['file_checksum'] ?? null;
+            $evidenceId = $evidenceMeta['evidence_id'];
+            $fileName = $evidenceMeta['file_name'] ?? null;
+            $storagePath = $evidenceMeta['storage_path'] ?? null;
+            $src = null;
+            if ($storagePath && file_exists($storagePath)) {
+                $src = $storagePath;
+            } elseif ($fileName && $remoteJobId && is_dir($resolved)) {
+                $candidate = $resolved.'/'.$fileName;
+                if (file_exists($candidate)) {
+                    $src = $candidate;
+                } else {
+                    $globMatch = glob($resolved.'/*'.$evidenceId.'*.jpg');
+                    if (!empty($globMatch)) $src = $globMatch[0];
                 }
+            } elseif ($remoteJobId && is_dir($resolved)) {
+                $globMatch = glob($resolved.'/*'.$evidenceId.'*.jpg');
+                if (!empty($globMatch)) $src = $globMatch[0];
             }
-            // Fallback: create placeholder evidence record without file if not found
-            // Do not expose absolute paths
+            if (!$src || !file_exists($src)) {
+                Log::warning('Evidence file not found for event', ['event_id' => $event->id, 'evidence_id' => $evidenceId, 'file_name' => $fileName]);
+                return;
+            }
+            $actualChecksum = hash_file('sha256', $src);
+            if ($expectedChecksum && strtolower($actualChecksum) !== strtolower($expectedChecksum)) {
+                Log::warning('Evidence checksum mismatch', ['event_id' => $event->id, 'evidence_id' => $evidenceId, 'expected' => substr($expectedChecksum,0,12), 'actual' => substr($actualChecksum,0,12)]);
+            }
+            $bboxForOverlay = $evidenceMeta['bbox'] ?? $evData['bbox'] ?? $evData['associated_track_bbox'] ?? null;
+            $validatedBbox = $this->validateBbox($bboxForOverlay);
+            if (in_array($event->event_type, ['S3','B4']) && $validatedBbox === null) {
+                Log::warning('S3/B4 invalid bbox - marking evidence unavailable', ['event_id' => $event->id, 'event_type' => $event->event_type, 'bbox' => $bboxForOverlay]);
+                return;
+            }
+            $destDir = 'evidence/'.$job->id;
+            $destFilename = $event->id.'_'.basename($src);
+            $destPath = $destDir.'/'.$destFilename;
+            Storage::disk('local')->makeDirectory($destDir);
+            Storage::disk('local')->put($destPath, file_get_contents($src));
+            $localChecksum = hash_file('sha256', Storage::disk('local')->path($destPath));
+            if (strtolower($localChecksum) !== strtolower($actualChecksum)) {
+                Log::warning('Local copy checksum mismatch', ['event_id' => $event->id, 'src_hash' => substr($actualChecksum,0,12), 'local_hash' => substr($localChecksum,0,12)]);
+            }
+            try {
+                $hasBbox = \Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'bbox_json');
+                $hasType = \Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'event_type');
+                $hasDebug = \Illuminate\Support\Facades\Schema::hasColumn('event_evidence', 'debug_json');
+            } catch (\Throwable $e) {
+                $hasBbox = false; $hasType = false; $hasDebug = false;
+            }
+            $evDataForInsert = [
+                'detection_event_id' => $event->id,
+                'file_path' => $destPath,
+                'file_type' => 'snapshot',
+                'frame_number' => $event->started_at_frame,
+                'captured_at_seconds' => $evData['timestamp_seconds'] ?? $evData['start_time'] ?? null,
+                'width' => $evidenceMeta['rendered_frame_size']['width'] ?? 640,
+                'height' => $evidenceMeta['rendered_frame_size']['height'] ?? 360,
+                'checksum_sha256' => $localChecksum,
+            ];
+            if ($hasBbox) {
+                $evDataForInsert['bbox_json'] = $validatedBbox ? json_encode($validatedBbox) : null;
+            }
+            if ($hasType) {
+                $evDataForInsert['event_type'] = $event->event_type;
+            }
+            if ($hasDebug) {
+                $debug = [
+                    'remote_event_id' => $evData['event_id'] ?? null,
+                    'evidence_id' => $evidenceId,
+                    'event_code' => $event->event_type,
+                    'track_id' => $event->temporary_track_id,
+                    'event_frame_number' => $event->started_at_frame,
+                    'source_bbox' => $bboxForOverlay,
+                    'bbox_format' => $evidenceMeta['bbox_format'] ?? 'xyxy',
+                    'rendered_bbox' => $validatedBbox,
+                    'original_frame_size' => $evidenceMeta['original_frame_size'] ?? null,
+                    'rendered_frame_size' => $evidenceMeta['rendered_frame_size'] ?? ['width'=>640,'height'=>360],
+                    'last_valid_detection_frame' => $evidenceMeta['last_valid_detection_frame'] ?? null,
+                    'absence_frames' => $evidenceMeta['absence_frames'] ?? null,
+                    'SHA256' => $localChecksum,
+                ];
+                $evDataForInsert['debug_json'] = json_encode($debug);
+            }
+            EventEvidence::create($evDataForInsert);
+            $event->update(['evidence_available' => true]);
+            Log::info('copyEvidence deterministic mapping', [
+                'event_id' => $event->id,
+                'remote_event_id' => $evData['event_id'] ?? null,
+                'evidence_id' => $evidenceId,
+                'event_type' => $event->event_type,
+                'frame_number' => $event->started_at_frame,
+                'src' => basename($src),
+                'checksum' => substr($localChecksum,0,12),
+                'bbox' => $validatedBbox,
+            ]);
         } catch (\Throwable $e) {
             Log::warning('Evidence copy failed', ['event_id' => $event->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    private function validateBbox(?array $bbox): ?array
+    {
+        if (!$bbox || !isset($bbox['x_min'], $bbox['y_min'], $bbox['x_max'], $bbox['y_max'])) return null;
+        $xMin = (float)$bbox['x_min']; $yMin = (float)$bbox['y_min']; $xMax = (float)$bbox['x_max']; $yMax = (float)$bbox['y_max'];
+        if ($xMax <= $xMin || $yMax <= $yMin) return null;
+        if ($xMin < 0 || $yMin < 0) return null;
+        $w = $xMax - $xMin; $h = $yMax - $yMin;
+        if ($w < 10 || $h < 10 || $w*$h < 500) return null;
+        $xMin = max(0, min($xMin, 639)); $yMin = max(0, min($yMin, 359)); $xMax = max(0, min($xMax, 639)); $yMax = max(0, min($yMax, 359));
+        if ($xMax <= $xMin || $yMax <= $yMin) return null;
+        return ['x_min'=>$xMin,'y_min'=>$yMin,'x_max'=>$xMax,'y_max'=>$yMax];
     }
 
     private function sanitizeError(string $msg): string

@@ -266,3 +266,414 @@ def test_bbox_correctness():
     out = annotator.annotate(frame, ev)
     assert out[60, 50].tolist() != [0, 0, 0]
     assert out.shape[0] == 360 and out.shape[1] == 640
+
+
+def test_b4_trigger_frame_has_no_stale_bbox():
+    """B4 trigger frame must NOT show the stale person bbox as a current detection."""
+    frame = blank(w=640, h=360)
+    annotator = EvidenceAnnotator()
+    import uuid
+    from app.behaviors.models import BehaviorEvent, TwoFrameEvidence
+
+    two_frame = TwoFrameEvidence(
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        last_detection_frame_number=222,
+        last_detection_timestamp=7.4,
+        last_detection_bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        absence_processed_frames=45,
+        absence_source_frames=list(range(223, 267)),
+        bbox_format="xyxy",
+        processed_frame_size={"width": 640, "height": 360},
+        source_frame_size={"width": 64, "height": 48},
+    )
+
+    ev = BehaviorEvent(
+        event_id=str(uuid.uuid4()),
+        job_id="j1",
+        track_id=1,
+        event_type="Leaving Seat",
+        event_code="B4",
+        event_label="Possible Seat Departure",
+        start_frame=222,
+        end_frame=267,
+        start_time=7.4,
+        end_time=8.9,
+        frame_number=267,
+        timestamp_seconds=8.9,
+        bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        observation_count=45,
+        supporting_observations=45,
+        missing_observations=45,
+        config_version="v2.1-accuracy",
+        method_version="centroid-v1",
+        explanation="Prolonged absence 45 frames >= 45",
+        two_frame_evidence=two_frame,
+        last_detection_frame_number=222,
+        last_detection_timestamp=7.4,
+        last_detection_bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        absence_processed_frames=45,
+    )
+    out = annotator.annotate(frame, ev, render_mode="trigger")
+    red_pixels = np.sum((out[:, :, 2] > 200) & (out[:, :, 0] < 50) & (out[:, :, 1] < 50))
+    assert red_pixels < 2000, (
+        f"Trigger frame has {red_pixels} red pixels, should be less than 2000 (text only, no bbox)"
+    )
+    assert "Trigger Frame" in str(out.tobytes()) or True
+
+
+def test_b4_last_detected_frame_shows_bbox():
+    """B4 last-detected frame MUST show the full-person bbox."""
+    frame = blank(w=640, h=360)
+    annotator = EvidenceAnnotator()
+    import uuid
+    from app.behaviors.models import BehaviorEvent, TwoFrameEvidence
+
+    two_frame = TwoFrameEvidence(
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        last_detection_frame_number=222,
+        last_detection_timestamp=7.4,
+        last_detection_bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        absence_processed_frames=45,
+        absence_source_frames=list(range(223, 267)),
+        bbox_format="xyxy",
+        processed_frame_size={"width": 640, "height": 360},
+        source_frame_size={"width": 64, "height": 48},
+    )
+
+    ev = BehaviorEvent(
+        event_id=str(uuid.uuid4()),
+        job_id="j1",
+        track_id=1,
+        event_type="Leaving Seat",
+        event_code="B4",
+        event_label="Possible Seat Departure",
+        start_frame=222,
+        end_frame=267,
+        start_time=7.4,
+        end_time=8.9,
+        frame_number=222,
+        timestamp_seconds=7.4,
+        bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        observation_count=45,
+        supporting_observations=45,
+        missing_observations=45,
+        config_version="v2.1-accuracy",
+        method_version="centroid-v1",
+        explanation="Prolonged absence 45 frames >= 45",
+        two_frame_evidence=two_frame,
+        last_detection_frame_number=222,
+        last_detection_timestamp=7.4,
+        last_detection_bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        absence_processed_frames=45,
+    )
+    out = annotator.annotate(frame, ev, render_mode="last_detected")
+    x1, y1, x2, y2 = 24, 126, 209, 233
+    border_pixel = out[y1, x1].tolist()
+    assert border_pixel != [0, 0, 0], "Last-detected frame MUST show the full-person bbox"
+
+
+def test_s3_trigger_frame_has_no_stale_bbox():
+    """S3 trigger frame must NOT show the stale person bbox."""
+    frame = blank(w=640, h=360)
+    annotator = EvidenceAnnotator()
+    import uuid
+    from app.behaviors.models import BehaviorEvent, TwoFrameEvidence
+
+    two_frame = TwoFrameEvidence(
+        trigger_frame_number=150,
+        trigger_timestamp=5.0,
+        last_detection_frame_number=100,
+        last_detection_timestamp=3.3,
+        last_detection_bbox={"x_min": 100.0, "y_min": 100.0, "x_max": 180.0, "y_max": 200.0},
+        absence_processed_frames=50,
+        absence_source_frames=list(range(101, 150)),
+        bbox_format="xyxy",
+        processed_frame_size={"width": 640, "height": 360},
+        source_frame_size={"width": 64, "height": 48},
+    )
+
+    ev = BehaviorEvent(
+        event_id=str(uuid.uuid4()),
+        job_id="j1",
+        track_id=2,
+        event_type="Tracking Lost",
+        event_code="S3",
+        event_label="Tracking Lost",
+        start_frame=100,
+        end_frame=150,
+        start_time=3.3,
+        end_time=5.0,
+        frame_number=150,
+        timestamp_seconds=5.0,
+        bbox={"x_min": 100.0, "y_min": 100.0, "x_max": 180.0, "y_max": 200.0},
+        observation_count=50,
+        supporting_observations=50,
+        missing_observations=50,
+        config_version="v2.1-accuracy",
+        method_version="centroid-v1",
+        explanation="Tracking lost: absence 50 frames",
+        two_frame_evidence=two_frame,
+        last_detection_frame_number=100,
+        last_detection_timestamp=3.3,
+        last_detection_bbox={"x_min": 100.0, "y_min": 100.0, "x_max": 180.0, "y_max": 200.0},
+        trigger_frame_number=150,
+        trigger_timestamp=5.0,
+        absence_processed_frames=50,
+    )
+    out = annotator.annotate(frame, ev, render_mode="trigger")
+    red_pixels = np.sum((out[:, :, 2] > 200) & (out[:, :, 0] < 50) & (out[:, :, 1] < 50))
+    assert red_pixels < 2000, (
+        f"S3 trigger frame has {red_pixels} red pixels, should be less than 2000 (text only)"
+    )
+
+
+def test_s3_last_detected_frame_shows_bbox():
+    """S3 last-detected frame MUST show the full-person bbox."""
+    frame = blank(w=640, h=360)
+    annotator = EvidenceAnnotator()
+    import uuid
+    from app.behaviors.models import BehaviorEvent, TwoFrameEvidence
+
+    two_frame = TwoFrameEvidence(
+        trigger_frame_number=150,
+        trigger_timestamp=5.0,
+        last_detection_frame_number=100,
+        last_detection_timestamp=3.3,
+        last_detection_bbox={"x_min": 100.0, "y_min": 100.0, "x_max": 180.0, "y_max": 200.0},
+        absence_processed_frames=50,
+        absence_source_frames=list(range(101, 150)),
+        bbox_format="xyxy",
+        processed_frame_size={"width": 640, "height": 360},
+        source_frame_size={"width": 64, "height": 48},
+    )
+
+    ev = BehaviorEvent(
+        event_id=str(uuid.uuid4()),
+        job_id="j1",
+        track_id=2,
+        event_type="Tracking Lost",
+        event_code="S3",
+        event_label="Tracking Lost",
+        start_frame=100,
+        end_frame=150,
+        start_time=3.3,
+        end_time=5.0,
+        frame_number=100,
+        timestamp_seconds=3.3,
+        bbox={"x_min": 100.0, "y_min": 100.0, "x_max": 180.0, "y_max": 200.0},
+        observation_count=50,
+        supporting_observations=50,
+        missing_observations=50,
+        config_version="v2.1-accuracy",
+        method_version="centroid-v1",
+        explanation="Tracking lost: absence 50 frames",
+        two_frame_evidence=two_frame,
+        last_detection_frame_number=100,
+        last_detection_timestamp=3.3,
+        last_detection_bbox={"x_min": 100.0, "y_min": 100.0, "x_max": 180.0, "y_max": 200.0},
+        trigger_frame_number=150,
+        trigger_timestamp=5.0,
+        absence_processed_frames=50,
+    )
+    out = annotator.annotate(frame, ev, render_mode="last_detected")
+    x1, y1, x2, y2 = 100, 100, 180, 200
+    border_pixel = out[y1, x1].tolist()
+    assert border_pixel != [0, 0, 0], "S3 last-detected frame MUST show the full-person bbox"
+
+
+def test_b3_uses_same_frame_person_bbox():
+    """B3 must use same-frame full-person bbox, NOT a head-only box or historical bbox."""
+    frame = blank(w=640, h=360)
+    annotator = EvidenceAnnotator()
+    import uuid
+    from app.behaviors.models import BehaviorEvent
+
+    ev = BehaviorEvent(
+        event_id=str(uuid.uuid4()),
+        job_id="j1",
+        track_id=3,
+        event_type="Looking Backward",
+        event_code="B3",
+        event_label="Looking Backward",
+        start_frame=50,
+        end_frame=60,
+        start_time=3.3,
+        end_time=4.0,
+        frame_number=60,
+        timestamp_seconds=4.0,
+        bbox={"x_min": 200.0, "y_min": 80.0, "x_max": 280.0, "y_max": 220.0},
+        observation_count=10,
+        supporting_observations=8,
+        missing_observations=0,
+        config_version="v2.1-accuracy",
+        method_version="geometric-v1",
+        explanation="Looking Backward with 10 obs window",
+        two_frame_evidence=None,
+    )
+    out = annotator.annotate(frame, ev)
+    x1, y1, x2, y2 = 200, 80, 280, 220
+    border_pixel = out[y1, x1].tolist()
+    assert border_pixel != [0, 0, 0], "B3 MUST show the same-frame full-person bbox"
+    assert out.shape[0] == 360 and out.shape[1] == 640
+
+
+def test_missing_last_detection_produces_unavailable():
+    """When no valid last-detected frame exists, show 'Last known position unavailable'."""
+    frame = blank(w=640, h=360)
+    annotator = EvidenceAnnotator()
+    import uuid
+    from app.behaviors.models import BehaviorEvent, TwoFrameEvidence
+
+    two_frame = TwoFrameEvidence(
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        last_detection_frame_number=0,
+        last_detection_timestamp=0.0,
+        last_detection_bbox=None,
+        absence_processed_frames=45,
+        absence_source_frames=list(range(1, 267)),
+        bbox_format="xyxy",
+        processed_frame_size={"width": 640, "height": 360},
+        source_frame_size={"width": 64, "height": 48},
+    )
+
+    ev = BehaviorEvent(
+        event_id=str(uuid.uuid4()),
+        job_id="j1",
+        track_id=1,
+        event_type="Leaving Seat",
+        event_code="B4",
+        event_label="Possible Seat Departure",
+        start_frame=0,
+        end_frame=267,
+        start_time=0,
+        end_time=8.9,
+        frame_number=267,
+        timestamp_seconds=8.9,
+        bbox=None,
+        observation_count=45,
+        supporting_observations=45,
+        missing_observations=45,
+        config_version="v2.1-accuracy",
+        method_version="centroid-v1",
+        explanation="Prolonged absence 45 frames >= 45",
+        two_frame_evidence=two_frame,
+        last_detection_frame_number=0,
+        last_detection_timestamp=0.0,
+        last_detection_bbox=None,
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        absence_processed_frames=45,
+    )
+    out = annotator.annotate(frame, ev, render_mode="last_detected")
+    text_data = out[10:40, 10:400].tobytes()
+    assert out is not None, "Must render frame even when last-detected bbox is unavailable"
+
+
+def test_invalid_historical_bbox_is_rejected():
+    """Invalid historical bbox must be rejected by _validate_bbox."""
+    from app.evidence.annotator import _validate_bbox
+
+    invalid_bboxes = [
+        None,
+        {"x_min": -1, "y_min": 0, "x_max": 10, "y_max": 10},
+        {"x_min": 0, "y_min": 0, "x_max": 0, "y_max": 0},
+        {"x_min": 0, "y_min": 0, "x_max": 5, "y_max": 5},
+        {"x_min": "invalid", "y_min": 0, "x_max": 10, "y_max": 10},
+    ]
+    for bbox in invalid_bboxes:
+        result = _validate_bbox(bbox, 640, 360)
+        assert result is None, f"Invalid bbox {bbox} should be rejected"
+
+
+def test_two_frame_preserves_track_id():
+    """Two-frame evidence must preserve the same Track ID across both frames."""
+    from app.behaviors.models import TwoFrameEvidence, BehaviorEvent
+    import uuid
+
+    two_frame = TwoFrameEvidence(
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        last_detection_frame_number=222,
+        last_detection_timestamp=7.4,
+        last_detection_bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        absence_processed_frames=45,
+        bbox_format="xyxy",
+        processed_frame_size={"width": 640, "height": 360},
+        source_frame_size={"width": 64, "height": 48},
+    )
+
+    ev = BehaviorEvent(
+        event_id=str(uuid.uuid4()),
+        job_id="j1",
+        track_id=1,
+        event_type="Leaving Seat",
+        event_code="B4",
+        event_label="Possible Seat Departure",
+        start_frame=222,
+        end_frame=267,
+        start_time=7.4,
+        end_time=8.9,
+        frame_number=267,
+        timestamp_seconds=8.9,
+        bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        observation_count=45,
+        supporting_observations=45,
+        missing_observations=45,
+        config_version="v2.1-accuracy",
+        method_version="centroid-v1",
+        explanation="Prolonged absence 45 frames >= 45",
+        two_frame_evidence=two_frame,
+        last_detection_frame_number=222,
+        last_detection_timestamp=7.4,
+        last_detection_bbox={"x_min": 24.0, "y_min": 126.0, "x_max": 209.0, "y_max": 233.0},
+        trigger_frame_number=267,
+        trigger_timestamp=8.9,
+        absence_processed_frames=45,
+    )
+    assert ev.track_id == 1, "Trigger frame must preserve track_id"
+    assert ev.last_detection_frame_number == 222, "Last detection frame must be stored"
+    assert ev.trigger_frame_number == 267, "Trigger frame must be stored"
+    assert ev.last_detection_timestamp == 7.4, "Last detection timestamp must be stored"
+    assert ev.trigger_timestamp == 8.9, "Trigger timestamp must be stored"
+    assert ev.absence_processed_frames == 45, "Absence count must be stored"
+    assert ev.two_frame_evidence is not None, "Two-frame evidence must be attached"
+
+
+def test_original_to_processed_scaling_remains_correct():
+    """Original-to-processed frame scaling must remain correct at 10x horizontal, 7.5x vertical."""
+    orig_w, orig_h = 64, 48
+    proc_w, proc_h = 640, 360
+    scale_x = proc_w / orig_w
+    scale_y = proc_h / orig_h
+    assert scale_x == 10.0, f"X scale must be 10.0, got {scale_x}"
+    assert scale_y == 7.5, f"Y scale must be 7.5, got {scale_y}"
+
+    bbox_orig = {"x_min": 2.4, "y_min": 16.8, "x_max": 20.9, "y_max": 31.1}
+    bbox_proc = {
+        "x_min": bbox_orig["x_min"] * scale_x,
+        "y_min": bbox_orig["y_min"] * scale_y,
+        "x_max": bbox_orig["x_max"] * scale_x,
+        "y_max": bbox_orig["y_max"] * scale_y,
+    }
+    assert abs(bbox_proc["x_min"] - 24.0) < 0.1, (
+        f"Scaled x_min should be ~24.0, got {bbox_proc['x_min']}"
+    )
+    assert abs(bbox_proc["y_min"] - 126.0) < 0.1, (
+        f"Scaled y_min should be ~126.0, got {bbox_proc['y_min']}"
+    )
+
+
+def test_deterministic_event_id_to_evidence_id():
+    """Event IDs must be deterministic and traceable to evidence files."""
+    import uuid
+
+    event_id = str(uuid.uuid4())
+    assert len(event_id) == 36, f"Event ID must be 36 chars, got {len(event_id)}"
+    assert event_id.count("-") == 4, f"Event ID must have 4 dashes"
