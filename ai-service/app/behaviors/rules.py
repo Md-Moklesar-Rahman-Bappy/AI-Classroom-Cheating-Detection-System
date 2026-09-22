@@ -210,27 +210,44 @@ class LeavingSeatRule(TemporalRule):
         self.last_known_bbox: dict[int, dict] = {}
         self.last_seen_time: dict[int, float] = {}
         self.last_known_frame: dict[int, int] = {}
+        self.state: dict[int, str] = {}
+        self.b4_emitted: dict[int, bool] = {}
 
     def mark_seen(self, track_id: int, frame: int, bbox: dict | None = None, timestamp: float = 0):
         self.last_seen[track_id] = frame
         self.last_known_frame[track_id] = frame
         self.absence[track_id] = 0
+        prev = self.state.get(track_id, "PRESENT")
+        if prev in ("ABSENT_PENDING", "ABSENT_CONFIRMED"):
+            self.state[track_id] = "RETURNED"
+        else:
+            self.state[track_id] = "PRESENT"
+        self.b4_emitted[track_id] = False
+        self.last_event_frame.pop(track_id, None)
         if bbox is not None:
             self.last_known_bbox[track_id] = dict(bbox)
         if timestamp:
             self.last_seen_time[track_id] = timestamp
+        if self.state[track_id] == "RETURNED":
+            self.state[track_id] = "PRESENT"
 
     def mark_missing(self, track_id: int, frame: int, timestamp: float = 0) -> BehaviorEvent | None:
         if track_id not in self.last_seen:
             return None
-        if self._should_suppress(track_id, frame):
-            return None
         absence = frame - self.last_seen[track_id]
         self.absence[track_id] = absence
+        cur_state = self.state.get(track_id, "PRESENT")
+        if cur_state == "PRESENT" and absence >= 1:
+            self.state[track_id] = "ABSENT_PENDING"
+            cur_state = "ABSENT_PENDING"
+        if self.b4_emitted.get(track_id, False):
+            return None
+        if self._should_suppress(track_id, frame):
+            return None
         if absence >= self.config.leaving_absence_frames:
-            if self.last_event_frame.get(track_id, -999) + self.config.cooldown_frames > frame:
-                return None
             self.last_event_frame[track_id] = frame
+            self.state[track_id] = "ABSENT_CONFIRMED"
+            self.b4_emitted[track_id] = True
             last_detection_frame = self.last_known_frame.get(track_id, self.last_seen[track_id])
             last_detection_timestamp = self.last_seen_time.get(track_id, 0)
             last_detection_bbox = self.last_known_bbox.get(track_id)
@@ -289,27 +306,46 @@ class TrackingLostRule:
         self.last_known_bbox: dict[int, dict] = {}
         self.last_seen_time: dict[int, float] = {}
         self.last_known_frame: dict[int, int] = {}
+        self.state: dict[int, str] = {}
+        self.s3_emitted: dict[int, bool] = {}
 
     def mark_seen(self, track_id: int, frame: int, bbox: dict | None = None, timestamp: float = 0):
         self.last_seen[track_id] = frame
         self.last_known_frame[track_id] = frame
+        prev = self.state.get(track_id, "PRESENT")
+        if prev in ("ABSENT_PENDING", "ABSENT_CONFIRMED"):
+            self.state[track_id] = "RETURNED"
+        else:
+            self.state[track_id] = "PRESENT"
+        self.s3_emitted[track_id] = False
+        self.last_event_frame.pop(track_id, None)
         if bbox is not None:
             self.last_known_bbox[track_id] = dict(bbox)
         if timestamp:
             self.last_seen_time[track_id] = timestamp
+        if self.state[track_id] == "RETURNED":
+            self.state[track_id] = "PRESENT"
 
     def mark_missing(self, track_id: int, frame: int, timestamp: float = 0) -> BehaviorEvent | None:
         if track_id not in self.last_seen:
             return None
+        absence = frame - self.last_seen[track_id]
+        cur_state = self.state.get(track_id, "PRESENT")
+        if cur_state == "PRESENT" and absence >= 1:
+            self.state[track_id] = "ABSENT_PENDING"
+            cur_state = "ABSENT_PENDING"
+        if self.s3_emitted.get(track_id, False):
+            return None
         last = self.last_event_frame.get(track_id)
         if last is not None and (frame - last) < self.config.tracking_lost_cooldown:
             return None
-        absence = frame - self.last_seen[track_id]
         if (
             absence >= self.config.tracking_lost_frames
             and absence < self.config.leaving_absence_frames
         ):
             self.last_event_frame[track_id] = frame
+            self.state[track_id] = "ABSENT_PENDING"
+            self.s3_emitted[track_id] = True
             last_detection_frame = self.last_known_frame.get(track_id, self.last_seen[track_id])
             last_detection_timestamp = self.last_seen_time.get(track_id, 0)
             last_detection_bbox = self.last_known_bbox.get(track_id)

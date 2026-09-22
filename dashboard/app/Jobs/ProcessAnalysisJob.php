@@ -247,6 +247,23 @@ class ProcessAnalysisJob implements ShouldQueue
                 if ($dup) {
                     continue;
                 }
+                // State-machine B4/S3 deduplication BEFORE database save: suppress repeated B4/S3 for same track while still absent
+                if (in_array($mapped, ['B4','S3'])) {
+                    $trackIdForDedup = $ev['track_id'] ?? 0;
+                    $curFrame = $ev['frame_number'] ?? $ev['start_frame'] ?? 0;
+                    $lastSame = DetectionEvent::where('analysis_job_id', $job->id)->where('temporary_track_id', $trackIdForDedup)->where('event_type', $mapped)->orderByDesc('started_at_frame')->first();
+                    if ($lastSame) {
+                        $gap = $curFrame - ($lastSame->started_at_frame ?? 0);
+                        // If gap < 200 frames (~20s at 10fps) and no TRACK_PRESENT observed, suppress as duplicate of same absence episode
+                        // This enforces PRESENT -> ABSENT_PENDING -> ABSENT_CONFIRMED -> single B4
+                        if ($gap > 0 && $gap < 200) {
+                            Log::info('B4/S3 deduplication suppressed duplicate before save', ['job_id'=>$job->id, 'track'=>$trackIdForDedup, 'code'=>$mapped, 'cur_frame'=>$curFrame, 'last_frame'=>$lastSame->started_at_frame, 'gap'=>$gap, 'correlation_id'=>$correlationId]);
+                            AuditHelper::log('event_dedup_suppressed', 'detection_event', (string)$job->id, 'success', ['code'=>$mapped, 'track'=>$trackIdForDedup, 'gap'=>$gap]);
+                            // increment suppressed counter in metrics if exists
+                            continue;
+                        }
+                    }
+                }
                 $detection = DetectionEvent::create([
                     'exam_session_id' => $job->exam_session_id,
                     'analysis_job_id' => $job->id,
