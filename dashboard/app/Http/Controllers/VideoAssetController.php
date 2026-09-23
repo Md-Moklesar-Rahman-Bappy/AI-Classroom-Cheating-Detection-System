@@ -16,8 +16,9 @@ class VideoAssetController extends Controller
         $query = VideoAsset::with('session');
         if ($request->boolean('trashed')) $query = VideoAsset::onlyTrashed()->with('session');
         $assets = $query->latest()->paginate(10)->withQueryString();
+        $canViewPlayback = auth()->user()->hasAnyRole(['system_admin','exam_admin','invigilator','reviewer']);
 
-        return view('video-assets.index', compact('assets'));
+        return view('video-assets.index', compact('assets', 'canViewPlayback'));
     }
 
     public function create()

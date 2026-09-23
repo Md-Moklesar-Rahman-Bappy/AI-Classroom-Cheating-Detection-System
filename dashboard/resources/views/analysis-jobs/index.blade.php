@@ -36,6 +36,7 @@
                             @if(in_array($j->status,["queued","processing","pending"])) @can("cancel",$j)<form method="POST" action="{{ route("analysis-jobs.cancel",$j) }}" class="d-inline cancel-form">@csrf<button class="btn btn-outline-warning focus-ring">Cancel</button></form>@endcan @endif
                             @if(in_array($j->status,["failed","cancelled"])) @can("retry",$j)<form method="POST" action="{{ route("analysis-jobs.retry",$j) }}" class="d-inline retry-form">@csrf<button class="btn btn-outline-info focus-ring">Retry</button></form>@endcan @endif
                             @if($j->status=="completed") @can("report",$j)<a href="{{ route("reports.show",$j) }}" class="btn btn-outline-success focus-ring">Report</a>@endcan @endif
+                            @if(isset($canViewPlayback) && $canViewPlayback && $j->videoAsset)<a href="{{ route('playback.show', $j->videoAsset) }}" class="btn btn-outline-info focus-ring"><i class="bi bi-play-circle me-1" aria-hidden="true"></i> Overlay</a>@endif
                             @can("delete",$j)<form method="POST" action="{{ route("analysis-jobs.destroy",$j) }}" class="d-inline delete-form">@csrf @method("DELETE")<button class="btn btn-outline-danger focus-ring">Delete</button></form>@endcan
                         </div>
                     </td>

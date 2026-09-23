@@ -22,8 +22,9 @@ class AnalysisJobController extends Controller
         $query = AnalysisJob::with(['session.room', 'modelVersion']);
         if ($request->boolean('trashed')) $query = AnalysisJob::onlyTrashed()->with(['session.room', 'modelVersion']);
         $jobs = $query->latest()->paginate(10)->withQueryString();
+        $canViewPlayback = auth()->user()->hasAnyRole(['system_admin','exam_admin','invigilator','reviewer']);
 
-        return view('analysis-jobs.index', compact('jobs'));
+        return view('analysis-jobs.index', compact('jobs', 'canViewPlayback'));
     }
 
     public function create()

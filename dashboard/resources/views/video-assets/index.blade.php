@@ -35,6 +35,7 @@
                         <div class="btn-group btn-group-sm" role="group" aria-label="Actions">
                             <a href="{{ route('video-assets.show',$a) }}" class="btn btn-outline-primary focus-ring" title="View"><i class="bi bi-eye" aria-hidden="true"></i> View</a>
                             <a href="{{ route('analysis-jobs.create') }}?video_asset_id={{ $a->id }}" class="btn btn-outline-success focus-ring" title="Analyze"><i class="bi bi-play" aria-hidden="true"></i> Analyze</a>
+                            @if(isset($canViewPlayback) && $canViewPlayback && $a->validation_status=="valid")<a href="{{ route('playback.show', $a) }}" class="btn btn-outline-info focus-ring" title="Play with overlay"><i class="bi bi-play-circle" aria-hidden="true"></i> Overlay</a>@endif
                             @can("edit",$a)<a href="{{ route('video-assets.edit',$a) }}" class="btn btn-outline-secondary focus-ring">Edit</a>@endcan
                             @can("delete",$a)<form method="POST" action="{{ route('video-assets.destroy',$a) }}" class="d-inline delete-form">@csrf @method('DELETE')<button class="btn btn-outline-danger focus-ring">Delete</button></form>@endcan
                         </div>

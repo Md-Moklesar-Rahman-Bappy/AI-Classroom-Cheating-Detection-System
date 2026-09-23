@@ -66,6 +66,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('role:system_admin,auditor,exam_admin');
     Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore')->middleware('role:system_admin');
     Route::resource('users', UserController::class)->middleware('role:system_admin');
+    Route::get('playback/{videoAsset}', [\App\Http\Controllers\PlaybackController::class, 'show'])->name('playback.show');
+    Route::get('playback/{videoAsset}/tracks', [\App\Http\Controllers\PlaybackController::class, 'tracks'])->name('playback.tracks');
+    Route::get('playback/{videoAsset}/stream', [\App\Http\Controllers\PlaybackController::class, 'stream'])->name('playback.stream');
     Route::get('trash', [\App\Http\Controllers\TrashController::class, 'index'])->name('trash.index')->middleware('role:system_admin,exam_admin');
     Route::post('trash/restore/{id}', [\App\Http\Controllers\TrashController::class, 'restore'])->name('trash.restore')->middleware('role:system_admin,exam_admin');
     Route::post('trash/force/{id}', [\App\Http\Controllers\TrashController::class, 'forceDelete'])->name('trash.force')->middleware('role:system_admin');
