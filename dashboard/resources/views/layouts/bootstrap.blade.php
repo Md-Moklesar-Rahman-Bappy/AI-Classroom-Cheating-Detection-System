@@ -160,7 +160,9 @@
             @if(session("success"))<div class="alert alert-success py-2 d-flex align-items-center gap-2" role="alert" style="font-size:13px"><i class="bi bi-check-circle" aria-hidden="true"></i> {{ session("success") }}</div>@endif
             @if(session("error"))<div class="alert alert-danger py-2" role="alert" style="font-size:13px">{{ session("error") }}</div>@endif
             @if($errors->any())<div class="alert alert-danger py-2" role="alert"><ul class="mb-0" style="font-size:13px">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
+            @if(request()->routeIs('dashboard'))
             <div class="ai-notice" role="note" aria-label="Responsible AI notice"><i class="bi bi-shield-exclamation text-warning" aria-hidden="true" style="font-size:16px;flex-shrink:0"></i><div><strong>AI Notice:</strong> AI-generated alerts indicate observable events that require human review. An alert is not proof of academic misconduct. Final academic or disciplinary decisions remain with authorized human reviewers and the institution.</div></div>
+            @endif
             @yield("content")
         </main>
         <footer class="border-top bg-white" style="padding:14px 20px">

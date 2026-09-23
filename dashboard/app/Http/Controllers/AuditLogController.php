@@ -12,7 +12,7 @@ class AuditLogController extends Controller
         if (! auth()->user()->hasAnyRole(['system_admin', 'auditor', 'exam_admin'])) {
             abort(403);
         }
-        $logs = AuditLog::orderBy('created_at', 'desc')->paginate(20)->withQueryString();
+        $logs = AuditLog::with('actor')->orderBy('created_at', 'desc')->paginate(20)->withQueryString();
 
         return view('audit-logs.index', compact('logs'));
     }

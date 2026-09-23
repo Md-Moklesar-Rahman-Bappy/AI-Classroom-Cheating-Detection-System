@@ -2,7 +2,7 @@
 @section("title","Session Detail")
 @section("content")
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
-<div><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">{{ $examSession->name }}</h1><p class="text-muted mb-0" style="font-size:13px"><code class="text-mono" style="font-size:11px">{{ $examSession->id }}</code> • {{ $examSession->created_at?->format('Y-m-d H:i') ?? "—" }}</p></div>
+<div><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">{{ $examSession->name }}</h1><p class="text-muted mb-0" style="font-size:13px">{{ $examSession->created_at?->format('Y-m-d H:i') ?? "—" }}</p></div>
 <div class="d-flex gap-2 flex-wrap"><a href="{{ route("exam-sessions.index") }}" class="btn btn-outline-secondary btn-sm focus-ring">Back</a><a href="{{ route("exam-sessions.edit",$examSession) }}" class="btn btn-primary btn-sm focus-ring">Edit</a><form method="POST" action="{{ route("exam-sessions.destroy",$examSession) }}" class="d-inline delete-form">@csrf @method("DELETE")<button class="btn btn-outline-danger btn-sm focus-ring">Delete</button></form></div>
 </div>
 <div class="row g-4">

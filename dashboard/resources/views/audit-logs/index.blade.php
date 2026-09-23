@@ -48,8 +48,8 @@
 <tr>
 <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $logs->firstItem()+$i }}</td>
 <td><span class="badge bg-light text-dark border status-badge">{{ $l->action }}</span></td>
-<td><code class="text-mono" style="font-size:11px">{{ $l->actor_id ?? "system" }}</code></td>
-<td><span class="badge bg-dark status-badge text-mono" style="font-size:11px">{{ $l->target_type }}:{{ Str::limit($l->target_id,8) }}</span></td>
+<td>{{ $l->actor->name ?? "system" }}</td>
+<td><span class="badge bg-dark status-badge text-mono" style="font-size:11px">{{ class_basename($l->target_type ?? "Unknown") }}</span></td>
 <td><span class="badge @if($l->result=="success") bg-success @else bg-danger @endif status-badge"><i class="bi @if($l->result=="success") bi-check-circle @else bi-x-circle @endif me-1" aria-hidden="true"></i>{{ $l->result }}</span></td>
 <td class="text-muted" style="font-size:12px;white-space:nowrap">{{ $l->created_at }}</td>
 </tr>
@@ -65,7 +65,7 @@
 @foreach($logs as $l)
 <div class="card p-3 mb-2">
 <div class="d-flex justify-content-between align-items-start gap-2"><span class="badge bg-light text-dark border status-badge">{{ $l->action }}</span><span class="badge @if($l->result=="success") bg-success @else bg-danger @endif status-badge">{{ $l->result }}</span></div>
-<div class="text-muted text-mono mt-2" style="font-size:11px">{{ $l->target_type }}:{{ Str::limit($l->target_id,8) }} • {{ $l->actor_id ?? "system" }}</div>
+<div class="text-muted text-mono mt-2" style="font-size:11px">{{ class_basename($l->target_type ?? "Unknown") }} • {{ $l->actor->name ?? "system" }}</div>
 <div class="text-muted" style="font-size:11px">{{ $l->created_at }}</div>
 </div>
 @endforeach

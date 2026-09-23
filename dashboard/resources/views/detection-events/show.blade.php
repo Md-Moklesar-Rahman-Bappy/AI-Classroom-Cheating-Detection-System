@@ -61,7 +61,7 @@
         <div class="card h-100">
             <div class="card-header bg-white" style="border-bottom:1px solid #e2e8f0;"><h5 class="mb-0" style="font-size:13px;letter-spacing:0.06em;text-transform:uppercase;"><i class="bi bi-file-earmark-bar-graph me-2 text-success"></i>Supporting Detector/Rule Evidence</h5></div>
             <div class="card-body" style="font-size:13px;">
-                <div class="d-flex justify-content-between mb-2"><span class="text-muted">Model</span><span>{{ $detectionEvent->model_version_id }}</span></div>
+                <div class="d-flex justify-content-between mb-2"><span class="text-muted">Model</span><span>{{ $detectionEvent->modelVersion->name ?? '—' }}</span></div>
                 <div class="d-flex justify-content-between mb-2"><span class="text-muted">Rule Score</span><span>{{ $detectionEvent->rule_score ?? "—" }}</span></div>
                 <div class="d-flex justify-content-between mb-3"><span class="text-muted">Evidence</span>@if($detectionEvent->evidence_available)<span class="badge bg-success status-badge">Available</span>@else<span class="badge bg-secondary status-badge">Not yet</span>@endif</div>
                 <div class="alert alert-warning py-2" style="font-size:12px;"><i class="bi bi-shield-exclamation me-1"></i><strong>Machine observation only — not proof of misconduct.</strong></div>
@@ -69,7 +69,7 @@
                     <div class="list-group list-group-flush">
                         @foreach($detectionEvent->evidences as $ev)
                         <a href="{{ route("evidence.show",$ev) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" style="font-size:13px;">
-                            <span><i class="bi bi-image me-2 text-muted"></i>Evidence #{{ $ev->id }} — Track #{{ $detectionEvent->temporary_track_id }} — {{ $detectionEvent->event_type }}</span><span class="badge bg-light text-dark border">View</span>
+                            <span><i class="bi bi-image me-2 text-muted"></i>Evidence snapshot — Track #{{ $detectionEvent->temporary_track_id }} — {{ $detectionEvent->event_type }}</span><span class="badge bg-light text-dark border">View</span>
                         </a>
                         @endforeach
                     </div>

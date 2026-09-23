@@ -22,7 +22,7 @@
 @foreach($rooms as $i => $r)
 <tr>
 <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $rooms->firstItem()+$i }}</td>
-<td><div class="fw-medium">{{ $r->name }}</div><div class="text-muted text-mono" style="font-size:11px">ID {{ Str::limit($r->id,8) }}</div></td>
+<td><div class="fw-medium">{{ $r->name }}</div></td>
 <td>{{ $r->building ?? "—" }}</td>
 <td><span class="badge bg-light text-dark border status-badge"><i class="bi bi-people me-1" aria-hidden="true"></i> {{ $r->capacity ?? "—" }}</span></td>
 <td class="text-muted" style="font-size:12px">{{ $r->created_at?->format('Y-m-d') ?? "—" }}</td>

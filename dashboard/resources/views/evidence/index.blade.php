@@ -8,7 +8,7 @@
 
 <div class="card mb-4">
 <div class="card-header bg-white d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-<h2 class="h6 mb-0" style="font-size:13px"><i class="bi bi-file-earmark-bar-graph me-2 text-primary" aria-hidden="true"></i>Event #{{ Str::limit($detectionEvent->id,8) }} — {{ $detectionEvent->event_type }}</h2>
+<h2 class="h6 mb-0" style="font-size:13px"><i class="bi bi-file-earmark-bar-graph me-2 text-primary" aria-hidden="true"></i>Event — {{ $detectionEvent->event_type }}</h2>
 <span class="badge @if($detectionEvent->review_status=="pending") bg-warning text-dark @elseif($detectionEvent->review_status=="confirmed_suspicious") bg-danger @else bg-success @endif status-badge"><i class="bi @if($detectionEvent->review_status=="pending") bi-hourglass @elseif($detectionEvent->review_status=="confirmed_suspicious") bi-exclamation-triangle @else bi-check-circle @endif me-1" aria-hidden="true"></i>{{ $detectionEvent->review_status }}</span>
 </div>
 <div class="card-body">
@@ -39,18 +39,29 @@
 <div class="card-body p-3">
 <div class="d-flex justify-content-between align-items-start mb-2">
 <span class="badge bg-primary status-badge"><i class="bi bi-camera me-1" aria-hidden="true"></i> {{ $ev->file_type }}</span>
-<code class="text-mono text-muted" style="font-size:11px">#{{ Str::limit($ev->id,8) }}</code>
+<span class="text-muted" style="font-size:11px">Snapshot</span>
 </div>
 <div class="bg-light rounded d-flex align-items-center justify-content-center mb-3" style="height:120px" role="img" aria-label="Evidence snapshot placeholder"><i class="bi bi-image text-muted" style="font-size:32px" aria-hidden="true"></i></div>
 <div style="font-size:13px"><div><strong>Frame</strong> <span style="font-variant-numeric:tabular-nums">{{ $ev->frame_number ?? "—" }}</span> <span class="text-muted">at {{ $ev->captured_at_seconds ?? "—" }}s</span></div><div class="text-muted text-mono d-flex align-items-center gap-1" style="font-size:11px">{{ $ev->width ?? "—" }}×{{ $ev->height ?? "—" }} • {{ Str::limit($ev->checksum_sha256 ?? "—",12) }} @if($ev->checksum_sha256)<button class="btn btn-sm btn-link p-0" onclick="navigator.clipboard.writeText('{{ $ev->checksum_sha256 }}')" aria-label="Copy checksum"><i class="bi bi-copy" style="font-size:11px" aria-hidden="true"></i></button>@endif</div></div>
 </div>
 <div class="card-footer bg-white d-flex justify-content-between align-items-center">
 <span class="text-muted d-inline-flex align-items-center gap-1" style="font-size:11px"><i class="bi bi-lock" aria-hidden="true"></i> Protected</span>
-<a href="{{ route("evidence.show",$ev) }}" class="btn btn-sm btn-primary focus-ring"><i class="bi bi-eye me-1" aria-hidden="true"></i> View</a>
+ <div class="d-flex gap-2">
+ <a href="{{ route("evidence.show",$ev) }}" class="btn btn-sm btn-primary focus-ring"><i class="bi bi-eye me-1" aria-hidden="true"></i> View</a>
+ @if(auth()->user()->hasAnyRole(['system_admin','exam_admin']))<form method="POST" action="{{ route('evidence.destroy',$ev) }}" class="evidence-delete-form">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger" aria-label="Move evidence to Trash"><i class="bi bi-trash" aria-hidden="true"></i></button></form>@endif
+ </div>
 </div>
 </div>
 </div>
 @endforeach
 </div>
 @endif
+@push('scripts')
+<script>
+document.querySelectorAll('.evidence-delete-form').forEach(form=>form.addEventListener('submit',event=>{
+    event.preventDefault();
+    Swal.fire({title:'Move evidence to Trash?',text:'This item can be restored later.',icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',confirmButtonText:'Move to Trash'}).then(result=>{if(result.isConfirmed)form.submit()});
+}));
+</script>
+@endpush
 @endsection

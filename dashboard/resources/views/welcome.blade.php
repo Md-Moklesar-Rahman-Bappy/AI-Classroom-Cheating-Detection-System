@@ -108,7 +108,7 @@
 <span><i class="bi bi-clock me-1" aria-hidden="true"></i> 00:14:22 · 24 FPS</span><span class="d-flex gap-2"><span class="badge bg-success">person</span><span class="badge bg-danger">phone</span><span class="badge bg-warning text-dark">behavior</span></span>
 </div>
 </div>
-<div class="ai-notice mt-3" role="note" aria-label="Responsible AI notice"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i><strong>AI Notice:</strong> AI-generated alerts indicate observable events that require human review. An alert is not proof of academic misconduct. Final academic or disciplinary decisions remain with authorized human reviewers and the institution.</div>
+
 </div>
 </div>
 </div>

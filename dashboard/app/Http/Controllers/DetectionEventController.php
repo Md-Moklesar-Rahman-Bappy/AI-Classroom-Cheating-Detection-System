@@ -35,25 +35,22 @@ class DetectionEventController extends Controller
 
     public function show(DetectionEvent $detectionEvent)
     {
-        $detectionEvent->load(['evidences', 'job']);
+        $detectionEvent->load(['evidences', 'job', 'modelVersion']);
         AuditHelper::log('event_viewed', 'detection_event', (string) $detectionEvent->id);
 
         return view('detection-events.show', compact('detectionEvent'));
     }
 
-    public function destroy(Request $request, DetectionEvent $detectionEvent)
+    public function destroy(DetectionEvent $detectionEvent)
     {
         if (! auth()->user()->hasAnyRole(['system_admin', 'exam_admin'])) {
             abort(403);
         }
-        if ($detectionEvent->review_status === 'confirmed_suspicious' && ! $request->boolean('force')) {
-            return back()->withErrors(['event' => 'Reviewed confirmed events require force flag']);
-        }
         $id = $detectionEvent->id;
         $detectionEvent->delete();
-        AuditHelper::log('event_deleted', 'detection_event', (string) $id, 'success', ['event_type' => $detectionEvent->event_type]);
+        AuditHelper::log('detection_event.delete', 'detection_event', (string) $id, 'success', ['event_type' => $detectionEvent->event_type]);
 
-        return back()->with('success', 'Event deleted (soft)');
+        return back()->with('success', '1 event(s) moved to Trash.');
     }
 
     public function bulkDestroy(Request $request)
@@ -61,22 +58,20 @@ class DetectionEventController extends Controller
         if (! auth()->user()->hasAnyRole(['system_admin', 'exam_admin'])) {
             abort(403);
         }
-        $ids = $request->input('ids', []);
-        $validator = validator()->make(['ids' => $ids], [
+        $data = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer', 'exists:detection_events,id'],
         ]);
-        if ($validator->fails()) return back()->withErrors($validator)->withInput();
 
         $count = 0;
-        foreach ($ids as $id) {
+        foreach ($data['ids'] as $id) {
             $event = DetectionEvent::findOrFail($id);
             $event->delete();
-            AuditHelper::log('event_deleted', 'detection_event', (string) $event->id, 'success', ['event_type' => $event->event_type]);
+            AuditHelper::log('detection_event.delete', 'detection_event', (string) $event->id, 'success', ['event_type' => $event->event_type]);
             $count++;
         }
 
-        return back()->with('success', "$count events deleted");
+        return back()->with('success', "$count event(s) moved to Trash.");
     }
 
     public function restore(Request $request, $id)

@@ -29,7 +29,7 @@ $isVerified = !is_null($user->email_verified_at);
 <span class="badge bg-light text-dark border" style="font-size:11px"><i class="bi bi-circle-fill text-success me-1" style="font-size:7px"></i> Account Active</span>
 </div>
 <div class="text-muted mt-1" style="font-size:13px"><i class="bi bi-envelope me-1"></i> {{ $user->email }}</div>
-<div class="text-muted" style="font-size:11px">Member since {{ $user->created_at?->format('M d, Y') }} · ID #{{ $user->id }}</div>
+<div class="text-muted" style="font-size:11px">Member since {{ $user->created_at?->format('M d, Y') }}</div>
 </div>
 <div class="d-flex gap-2 ms-md-auto">
 <a href="#profile-info" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Edit</a>

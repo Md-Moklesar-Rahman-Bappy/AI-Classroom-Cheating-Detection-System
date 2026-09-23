@@ -45,4 +45,9 @@ class DetectionEvent extends Model
     {
         return $this->belongsTo(ExamSession::class, 'exam_session_id');
     }
+
+    public function modelVersion()
+    {
+        return $this->belongsTo(ModelVersion::class, 'model_version_id');
+    }
 }

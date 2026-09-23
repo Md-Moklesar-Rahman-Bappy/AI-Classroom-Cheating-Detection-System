@@ -1,7 +1,7 @@
 @extends("layouts.bootstrap")
 @section("title","Edit Session")
 @section("content")
-<div class="mb-4"><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">Edit Session</h1><p class="text-muted mb-0" style="font-size:13px">Updating <span class="fw-medium" style="color:var(--color-text)">{{ $examSession->name }}</span> • <code class="text-mono" style="font-size:11px">{{ Str::limit($examSession->id,8) }}</code></p></div>
+<div class="mb-4"><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">Edit Session</h1><p class="text-muted mb-0" style="font-size:13px">Updating <span class="fw-medium" style="color:var(--color-text)">{{ $examSession->name }}</span></p></div>
 <div class="card p-4" style="max-width:640px">
 <form method="POST" action="{{ route("exam-sessions.update",$examSession) }}" novalidate>
 @csrf @method("PUT")

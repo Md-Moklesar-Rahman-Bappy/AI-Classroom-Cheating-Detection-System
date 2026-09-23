@@ -92,19 +92,27 @@ class EvidenceController extends Controller
         if (! auth()->user()->hasAnyRole(['system_admin','exam_admin'])) abort(403);
         $id = $evidence->id;
         $evidence->delete();
-        AuditHelper::log('evidence_deleted', 'event_evidence', (string) $id);
+        AuditHelper::log('event_evidence.delete', 'event_evidence', (string) $id);
 
-        return back()->with('success', 'Evidence deleted (soft)');
+        return back()->with('success', 'Evidence moved to Trash.');
     }
 
     public function bulkDestroy(Request $request)
     {
         if (! auth()->user()->hasAnyRole(['system_admin','exam_admin'])) abort(403);
-        $ids = $request->input('ids', []);
-        if (empty($ids)) return back()->withErrors(['ids'=>'No selection']);
-        $count = EventEvidence::whereIn('id', $ids)->delete();
-        AuditHelper::log('evidence_bulk_deleted', 'event_evidence', implode(',', $ids), 'success', ['count'=>$count]);
-        return back()->with('success', "$count evidences deleted");
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:event_evidence,id'],
+        ]);
+        $count = 0;
+        foreach ($data['ids'] as $id) {
+            $evidence = EventEvidence::findOrFail($id);
+            $evidence->delete();
+            AuditHelper::log('event_evidence.delete', 'event_evidence', (string) $evidence->id);
+            $count++;
+        }
+
+        return back()->with('success', "$count evidence item(s) moved to Trash.");
     }
 
     public function restore($id)

@@ -19,8 +19,8 @@ class AnalysisJobController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', AnalysisJob::class);
-        $query = AnalysisJob::with(['session', 'modelVersion']);
-        if ($request->boolean('trashed')) $query = AnalysisJob::onlyTrashed()->with(['session', 'modelVersion']);
+        $query = AnalysisJob::with(['session.room', 'modelVersion']);
+        if ($request->boolean('trashed')) $query = AnalysisJob::onlyTrashed()->with(['session.room', 'modelVersion']);
         $jobs = $query->latest()->paginate(10)->withQueryString();
 
         return view('analysis-jobs.index', compact('jobs'));

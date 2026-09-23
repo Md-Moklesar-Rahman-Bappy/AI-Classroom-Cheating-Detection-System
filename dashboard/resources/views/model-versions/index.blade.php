@@ -19,11 +19,12 @@
 <div class="table-responsive">
 <table class="table table-hover align-middle mb-0" style="font-size:13px">
 <caption class="visually-hidden">Model versions — name, version, checksum, license</caption>
-<thead><tr><th>Name</th><th>Version</th><th>Checksum (SHA-256)</th><th>License</th><th style="width:120px">Actions</th></tr></thead>
+<thead><tr><th style="width:40px">SL</th><th>Name</th><th>Version</th><th>Checksum (SHA-256)</th><th>License</th><th style="width:120px">Actions</th></tr></thead>
 <tbody>
-@foreach($models as $m)
+@foreach($models as $i => $m)
 <tr>
-<td><div class="fw-medium d-flex align-items-center gap-2"><i class="bi bi-file-earmark-code text-muted" aria-hidden="true"></i> {{ $m->name }}</div><div class="text-muted text-mono" style="font-size:11px">ID {{ Str::limit($m->id,8) }}</div></td>
+<td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $models->firstItem() + $i }}</td>
+<td><div class="fw-medium d-flex align-items-center gap-2"><i class="bi bi-file-earmark-code text-muted" aria-hidden="true"></i> {{ $m->name }}</div></td>
 <td><span class="badge bg-primary status-badge">{{ $m->version }}</span></td>
 <td><code class="text-mono" style="font-size:11px;word-break:break-all" title="{{ $m->checksum_sha256 }}">{{ Str::limit($m->checksum_sha256,20) }}</code> @if($m->checksum_sha256)<button class="btn btn-sm btn-link p-0 ms-1" onclick="navigator.clipboard.writeText('{{ $m->checksum_sha256 }}')" aria-label="Copy checksum" title="Copy checksum"><i class="bi bi-copy" style="font-size:12px" aria-hidden="true"></i></button> <i class="bi bi-shield-check text-success ms-1" aria-hidden="true" title="Verified"></i>@endif</td>
 <td><span class="badge @if($m->license=="AGPL-3.0") bg-dark @else bg-secondary @endif status-badge"><i class="bi bi-file-text me-1" aria-hidden="true"></i>{{ $m->license }}</span></td>
@@ -36,9 +37,10 @@
 <div class="card-footer bg-white"><x-pagination :paginator="$models" /></div>
 </div>
 <div class="d-md-none">
-@foreach($models as $m)
+@foreach($models as $i => $m)
 <div class="card p-3 mb-2">
 <div class="d-flex justify-content-between align-items-start gap-2"><div class="fw-medium">{{ $m->name }}</div><span class="badge bg-primary status-badge">{{ $m->version }}</span></div>
+<div class="text-muted mt-1" style="font-size:11px">SL {{ $models->firstItem() + $i }}</div>
 <div class="text-mono text-muted mt-1 d-flex align-items-center gap-1" style="font-size:11px;word-break:break-all">{{ Str::limit($m->checksum_sha256,24) }} <button class="btn btn-sm btn-link p-0" onclick="navigator.clipboard.writeText('{{ $m->checksum_sha256 }}')" aria-label="Copy checksum"><i class="bi bi-copy" aria-hidden="true"></i></button></div>
 <div class="mt-1"><span class="badge @if($m->license=="AGPL-3.0") bg-dark @else bg-secondary @endif status-badge">{{ $m->license }}</span></div>
 <div class="mt-3"><a href="{{ route("model-versions.show",$m) }}" class="btn btn-sm btn-outline-primary">View</a></div>

@@ -17,14 +17,13 @@
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size:13px">
-                <caption class="visually-hidden">Analysis jobs — ID, session, status, progress, actions</caption>
-                <thead><tr><th style="width:40px">SL</th><th>ID</th><th>Session</th><th>Source</th><th>Model</th><th>Status</th><th>Progress</th><th>Created</th><th style="width:320px">Actions</th></tr></thead>
+                <caption class="visually-hidden">Analysis jobs — session, status, progress, actions</caption>
+                <thead><tr><th style="width:40px">SL</th><th>Session</th><th>Source</th><th>Model</th><th>Status</th><th>Progress</th><th>Created</th><th style="width:320px">Actions</th></tr></thead>
                 <tbody>
                 @foreach($jobs as $i => $j)
                 <tr>
-                    <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $jobs->firstItem()+$i }}</td>
-                    <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $jobs->firstItem()+$i }}</td>
-                    <td><div class="fw-medium">{{ $j->session->name ?? "—" }}</div><div class="text-muted" style="font-size:11px">Room ID {{ Str::limit($j->exam_session_id,8) }}</div></td>
+                    <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $jobs->firstItem() + $i }}</td>
+                    <td><div class="fw-medium">{{ $j->session->name ?? "—" }}</div><div class="text-muted" style="font-size:11px">{{ $j->session->room->name ?? "No room assigned" }}</div></td>
                     <td><span class="badge bg-light text-dark border status-badge">{{ $j->source_type }}</span></td>
                     <td class="text-muted" style="font-size:12px">{{ $j->modelVersion->name ?? "—" }}</td>
                     <td><span class="badge @if($j->status=="completed") bg-success @elseif($j->status=="failed") bg-danger @elseif(in_array($j->status,["processing","queued"])) bg-primary @elseif($j->status=="cancelled") bg-secondary @else bg-warning text-dark @endif status-badge"><i class="bi @if($j->status=="completed") bi-check-circle @elseif($j->status=="failed") bi-x-circle @elseif(in_array($j->status,["processing","queued"])) bi-hourglass-split @elseif($j->status=="cancelled") bi-slash-circle @else bi-clock @endif me-1" aria-hidden="true"></i>{{ $j->status }}</span></td>

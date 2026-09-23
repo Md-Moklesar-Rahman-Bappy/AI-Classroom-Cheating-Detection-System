@@ -2,7 +2,7 @@
 @section("title","Job Report")
 @section("content")
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
-<div><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">Report — Job {{ Str::limit($analysisJob->id,12) }}</h1><p class="text-muted mb-0" style="font-size:13px">Correlation <code class="text-mono" style="font-size:11px">{{ $analysisJob->correlation_id ?? "—" }}</code> • Remote <code class="text-mono" style="font-size:11px">{{ $analysisJob->remote_job_id ?? "No remote job" }}</code></p></div>
+<div><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">Analysis Report</h1><p class="text-muted mb-0" style="font-size:13px">Correlation <code class="text-mono" style="font-size:11px">{{ $analysisJob->correlation_id ?? "—" }}</code> • Remote <code class="text-mono" style="font-size:11px">{{ $analysisJob->remote_job_id ?? "No remote job" }}</code></p></div>
 <div class="d-flex gap-2 flex-wrap"><a href="{{ route("analysis-jobs.show",$analysisJob) }}" class="btn btn-outline-secondary btn-sm focus-ring">Back to Job</a><a href="{{ route("reports.download",$analysisJob) }}" class="btn btn-success btn-sm focus-ring"><i class="bi bi-download me-1" aria-hidden="true"></i> Download</a></div>
 </div>
 

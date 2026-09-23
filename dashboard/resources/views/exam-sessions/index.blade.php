@@ -22,7 +22,7 @@
 @foreach($sessions as $i => $s)
 <tr>
 <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $sessions->firstItem()+$i }}</td>
-<td><div class="fw-medium">{{ $s->name }}</div><div class="text-muted text-mono" style="font-size:11px">ID {{ Str::limit($s->id,8) }}</div></td>
+<td><div class="fw-medium">{{ $s->name }}</div></td>
 <td><span class="badge bg-light text-dark border status-badge"><i class="bi bi-building me-1" aria-hidden="true"></i> {{ $s->room->name ?? "No room assigned" }}</span></td>
 <td><span class="badge @if($s->status=="active") bg-success @elseif($s->status=="pending") bg-warning text-dark @elseif($s->status=="completed") bg-primary @elseif($s->status=="cancelled") bg-secondary @else bg-light text-dark border @endif status-badge"><i class="bi @if($s->status=="active") bi-play-circle @elseif($s->status=="pending") bi-hourglass @elseif($s->status=="completed") bi-check-circle @elseif($s->status=="cancelled") bi-slash-circle @else bi-circle @endif me-1" aria-hidden="true"></i>{{ $s->status }}</span></td>
 <td class="text-muted" style="font-size:12px">{{ $s->created_at?->format('Y-m-d') ?? "—" }}</td>

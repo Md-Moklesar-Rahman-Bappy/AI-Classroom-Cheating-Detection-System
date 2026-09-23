@@ -2,7 +2,7 @@
 @section("title","Room Detail")
 @section("content")
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
-<div><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">{{ $examRoom->name }}</h1><p class="text-muted mb-0" style="font-size:13px"><code class="text-mono" style="font-size:11px">{{ $examRoom->id }}</code> • Created {{ $examRoom->created_at?->format('Y-m-d H:i') ?? "—" }}</p></div>
+<div><h1 class="h4 mb-1" style="font-weight:700;letter-spacing:-.02em">{{ $examRoom->name }}</h1><p class="text-muted mb-0" style="font-size:13px">Created {{ $examRoom->created_at?->format('Y-m-d H:i') ?? "—" }}</p></div>
 <div class="d-flex gap-2 flex-wrap"><a href="{{ route("exam-rooms.index") }}" class="btn btn-outline-secondary btn-sm focus-ring">Back</a><a href="{{ route("exam-rooms.edit",$examRoom) }}" class="btn btn-primary btn-sm focus-ring"><i class="bi bi-pencil me-1" aria-hidden="true"></i> Edit</a><form method="POST" action="{{ route("exam-rooms.destroy",$examRoom) }}" class="d-inline delete-form">@csrf @method("DELETE")<button class="btn btn-outline-danger btn-sm focus-ring">Delete</button></form></div>
 </div>
 <div class="row g-4">
@@ -22,7 +22,6 @@
 <div class="card">
 <div class="card-header bg-white"><h2 class="h6 mb-0" style="font-size:11px;letter-spacing:.06em;text-transform:uppercase">Info</h2></div>
 <div class="card-body" style="font-size:13px">
-<div class="d-flex justify-content-between mb-2"><span class="text-muted">ID</span><code class="text-mono" style="font-size:11px">{{ Str::limit($examRoom->id,12) }}</code></div>
 <div class="d-flex justify-content-between mb-2"><span class="text-muted">Created</span><span>{{ $examRoom->created_at?->format('Y-m-d H:i') ?? "—" }}</span></div>
 <div class="d-flex justify-content-between"><span class="text-muted">Updated</span><span>{{ $examRoom->updated_at?->format('Y-m-d H:i') ?? "—" }}</span></div>
 </div>

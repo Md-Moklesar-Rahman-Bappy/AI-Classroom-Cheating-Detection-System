@@ -23,7 +23,7 @@
                 @foreach($assets as $i => $a)
                 <tr>
                     <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $assets->firstItem()+$i }}</td>
-                    <td><div class="fw-medium truncate" style="max-width:220px" title="{{ $a->original_filename }}">{{ $a->original_filename }}</div><div class="text-muted text-mono" style="font-size:11px">ID {{ Str::limit($a->id,8) }}</div></td>
+                    <td><div class="fw-medium truncate" style="max-width:220px" title="{{ $a->original_filename }}">{{ $a->original_filename }}</div></td>
                     <td><code class="text-mono" title="{{ $a->stored_filename }}">{{ Str::limit($a->stored_filename,18) }}</code> <button class="btn btn-sm btn-link p-0 ms-1" onclick="navigator.clipboard.writeText('{{ $a->stored_filename }}')" aria-label="Copy stored filename" title="Copy"><i class="bi bi-copy" aria-hidden="true" style="font-size:12px"></i></button></td>
                     <td><span class="badge bg-light text-dark border status-badge">{{ $a->mime_type }}</span></td>
                     <td style="font-variant-numeric:tabular-nums">{{ $a->size_bytes>0 ? number_format($a->size_bytes).' B' : '—' }}</td>

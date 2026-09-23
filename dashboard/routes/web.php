@@ -66,18 +66,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('role:system_admin,auditor,exam_admin');
     Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore')->middleware('role:system_admin');
     Route::resource('users', UserController::class)->middleware('role:system_admin');
-    Route::get('trash', function () {
-        return view('trash.index', [
-            'rooms' => \App\Models\ExamRoom::onlyTrashed()->latest()->take(10)->get(),
-            'sessions' => \App\Models\ExamSession::onlyTrashed()->latest()->take(10)->get(),
-            'cameras' => \App\Models\CameraSource::onlyTrashed()->latest()->take(10)->get(),
-            'videos' => \App\Models\VideoAsset::onlyTrashed()->latest()->take(10)->get(),
-            'jobs' => \App\Models\AnalysisJob::onlyTrashed()->latest()->take(10)->get(),
-            'events' => \App\Models\DetectionEvent::onlyTrashed()->latest()->take(10)->get(),
-            'evidences' => \App\Models\EventEvidence::onlyTrashed()->latest()->take(10)->get(),
-            'users' => \App\Models\User::onlyTrashed()->latest()->take(10)->get(),
-        ]);
-    })->name('trash.index')->middleware('role:system_admin,exam_admin');
+    Route::get('trash', [\App\Http\Controllers\TrashController::class, 'index'])->name('trash.index')->middleware('role:system_admin,exam_admin');
+    Route::post('trash/restore/{id}', [\App\Http\Controllers\TrashController::class, 'restore'])->name('trash.restore')->middleware('role:system_admin,exam_admin');
+    Route::post('trash/force/{id}', [\App\Http\Controllers\TrashController::class, 'forceDelete'])->name('trash.force')->middleware('role:system_admin');
+    Route::post('trash/bulk-restore', [\App\Http\Controllers\TrashController::class, 'bulkRestore'])->name('trash.bulk-restore')->middleware('role:system_admin,exam_admin');
+    Route::post('trash/bulk-force', [\App\Http\Controllers\TrashController::class, 'bulkForceDelete'])->name('trash.bulk-force')->middleware('role:system_admin');
     Route::get('live', [LiveController::class, 'index'])->name('live.index')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
     Route::post('live/start', [LiveController::class, 'start'])->name('live.start')->middleware('role:system_admin,exam_admin,invigilator');
     Route::get('live/{sessionId}', [LiveController::class, 'show'])->name('live.show')->middleware('role:system_admin,exam_admin,invigilator,reviewer,auditor');
@@ -92,7 +85,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('help.index');
     })->name('help.index');
     Route::get('metrics', function () {
-        $metrics = ProcessingMetric::with('analysisJob')->paginate(10)->withQueryString();
+        $metrics = ProcessingMetric::with(['analysisJob.session', 'analysisJob.videoAsset'])->paginate(10)->withQueryString();
 
         return view('metrics.index', compact('metrics'));
     })->name('metrics.index');
