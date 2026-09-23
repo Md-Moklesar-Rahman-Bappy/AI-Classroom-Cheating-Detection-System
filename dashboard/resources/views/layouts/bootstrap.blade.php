@@ -60,6 +60,9 @@
         .kpi-card .icon{width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:16px}
         .status-badge{font-size:11px;letter-spacing:.02em;font-weight:600}
         .table thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted);font-weight:600;border-bottom:1px solid var(--color-border);white-space:nowrap}
+        .pagination{margin-bottom:0;--bs-pagination-font-size:12px;--bs-pagination-padding-x:.6rem;--bs-pagination-padding-y:.3rem;--bs-pagination-color:var(--color-text-muted);--bs-pagination-active-bg:var(--color-primary);--bs-pagination-active-border-color:var(--color-primary);--bs-pagination-border-color:var(--color-border);--bs-pagination-border-radius:var(--radius-sm)}
+        .pagination svg,nav[role="navigation"] svg{width:1rem;height:1rem;flex-shrink:0}
+        .pagination .page-link:focus{box-shadow:0 0 0 3px rgba(37,99,235,.15)}
         .btn:focus,.form-control:focus,.form-select:focus{box-shadow:0 0 0 3px rgba(37,99,235,.15);border-color:var(--color-primary)}
         .breadcrumb{font-size:13px;margin:0}
         .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(2px);z-index:1039}

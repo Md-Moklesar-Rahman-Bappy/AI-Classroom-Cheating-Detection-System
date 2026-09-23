@@ -49,10 +49,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('analysis-jobs/{analysisJob}/retry', [AnalysisJobController::class, 'retry'])->name('analysis-jobs.retry');
     Route::get('analysis-jobs/{analysisJob}/report', [ReportController::class, 'show'])->name('reports.show');
     Route::get('analysis-jobs/{analysisJob}/report/download', [ReportController::class, 'download'])->name('reports.download');
-    Route::resource('detection-events', DetectionEventController::class)->only(['index', 'show', 'destroy']);
-    Route::post('detection-events/bulk-delete', [DetectionEventController::class, 'bulkDestroy'])->name('detection-events.bulk-delete');
-    Route::post('detection-events/bulk-restore', [DetectionEventController::class, 'bulkRestore'])->name('detection-events.bulk-restore');
-    Route::post('detection-events/{id}/restore', [DetectionEventController::class, 'restore'])->name('detection-events.restore');
+    Route::resource('detection-events', DetectionEventController::class)->only(['index', 'show']);
+    Route::delete('detection-events/{detectionEvent}', [DetectionEventController::class, 'destroy'])->name('detection-events.destroy')->middleware('role:system_admin,exam_admin');
+    Route::post('detection-events/bulk-delete', [DetectionEventController::class, 'bulkDestroy'])->name('detection-events.bulk-delete')->middleware('role:system_admin,exam_admin');
+    Route::post('detection-events/bulk-restore', [DetectionEventController::class, 'bulkRestore'])->name('detection-events.bulk-restore')->middleware('role:system_admin,exam_admin');
+    Route::post('detection-events/{id}/restore', [DetectionEventController::class, 'restore'])->name('detection-events.restore')->middleware('role:system_admin,exam_admin');
     Route::post('detection-events/{detectionEvent}/review', [ReviewDecisionController::class, 'store'])->name('detection-events.review');
     Route::get('evidence', [EvidenceController::class, 'index'])->name('evidence.index')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');
     Route::get('evidence/{evidence}', [EvidenceController::class, 'show'])->name('evidence.show')->middleware('role:system_admin,exam_admin,reviewer,invigilator,auditor');

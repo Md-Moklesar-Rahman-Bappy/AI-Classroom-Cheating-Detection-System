@@ -53,7 +53,7 @@ class DetectionEventController extends Controller
         $detectionEvent->delete();
         AuditHelper::log('event_deleted', 'detection_event', (string) $id, 'success', ['event_type' => $detectionEvent->event_type]);
 
-        return redirect()->route('detection-events.index')->with('success', 'Event deleted (soft)');
+        return back()->with('success', 'Event deleted (soft)');
     }
 
     public function bulkDestroy(Request $request)
@@ -62,9 +62,19 @@ class DetectionEventController extends Controller
             abort(403);
         }
         $ids = $request->input('ids', []);
-        if (empty($ids)) return back()->withErrors(['ids' => 'No selection']);
-        $count = DetectionEvent::whereIn('id', $ids)->delete();
-        AuditHelper::log('event_bulk_deleted', 'detection_event', implode(',', $ids), 'success', ['count' => $count]);
+        $validator = validator()->make(['ids' => $ids], [
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:detection_events,id'],
+        ]);
+        if ($validator->fails()) return back()->withErrors($validator)->withInput();
+
+        $count = 0;
+        foreach ($ids as $id) {
+            $event = DetectionEvent::findOrFail($id);
+            $event->delete();
+            AuditHelper::log('event_deleted', 'detection_event', (string) $event->id, 'success', ['event_type' => $event->event_type]);
+            $count++;
+        }
 
         return back()->with('success', "$count events deleted");
     }
