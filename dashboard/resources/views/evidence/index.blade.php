@@ -28,14 +28,18 @@
 <div class="alert alert-info py-2 mx-auto" style="font-size:12px;max-width:420px"><i class="bi bi-info-circle me-1" aria-hidden="true"></i> Files stored outside <code class="text-mono">public/</code> and served via authorized controller with audit.</div>
 </div>
 @else
+@php($canManageEvidence = auth()->user()->hasAnyRole(['system_admin','exam_admin']))
+<x-bulk-delete-bar :action="route('evidence.bulk-delete')" label="evidence items" />
 <div class="d-flex justify-content-between align-items-center mb-3">
+@if($canManageEvidence)<label class="small d-flex align-items-center gap-1"><input class="select-all form-check-input" type="checkbox" aria-label="Select all evidence on this page"> Select all on this page</label>@endif
 <h2 class="h6 mb-0" style="font-weight:600">Snapshots ({{ $evidences->count() }})</h2>
 <div class="btn-group btn-group-sm" role="group" aria-label="View toggle"><button class="btn btn-outline-secondary active focus-ring" aria-pressed="true"><i class="bi bi-grid" aria-hidden="true"></i> Grid</button><button class="btn btn-outline-secondary focus-ring"><i class="bi bi-list" aria-hidden="true"></i> List</button></div>
 </div>
 <div class="row g-3">
 @foreach($evidences as $ev)
 <div class="col-12 col-md-6 col-lg-4">
-<div class="card h-100">
+<div class="card h-100" style="position:relative;">
+@if($canManageEvidence)<label class="position-absolute top-0 start-0 m-2 p-1 bg-white bg-opacity-75 rounded small" style="z-index:2;"><input class="row-check form-check-input" type="checkbox" value="{{ $ev->id }}" aria-label="Select evidence item"></label>@endif
 <div class="card-body p-3">
 <div class="d-flex justify-content-between align-items-start mb-2">
 <span class="badge bg-primary status-badge"><i class="bi bi-camera me-1" aria-hidden="true"></i> {{ $ev->file_type }}</span>

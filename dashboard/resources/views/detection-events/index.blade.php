@@ -23,24 +23,17 @@
     </div>
 @else
     @php($canDeleteEvents = auth()->user()->hasAnyRole(['system_admin', 'exam_admin']))
-    @if($canDeleteEvents)
-    <form id="eventBulkDelete" method="POST" action="{{ route('detection-events.bulk-delete') }}" class="card card-body p-2 mb-3 d-none flex-row justify-content-between align-items-center gap-2">
-        @csrf
-        <span class="small"><strong id="eventSelectedCount">0</strong> selected on this page</span>
-        <div id="eventBulkIds"></div>
-        <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash me-1" aria-hidden="true"></i> Delete selected</button>
-    </form>
-    @endif
+    <x-bulk-delete-bar :action="route('detection-events.bulk-delete')" label="event items" />
     <div class="card d-none d-md-block">
         <div class="table-responsive">
             <table class="table table-hover mb-0" id="eventsTable" style="font-size:13px;">
                 <thead><tr>
-                    @if($canDeleteEvents)<th style="width:42px"><input class="event-select-all" type="checkbox" aria-label="Select all events on this page"></th>@endif
+                    @if($canDeleteEvents)<th style="width:42px"><input class="select-all" type="checkbox" aria-label="Select all events on this page"></th>@endif
                     <th style="width:40px">SL</th><th>Type</th><th>Track</th><th>Time</th><th>Frame</th><th>Review</th><th>Confidence</th><th>Actions</th></tr></thead>
                 <tbody>
                     @foreach($events as $i => $e)
                     <tr>
-                        @if($canDeleteEvents)<td><input class="event-select" type="checkbox" value="{{ $e->id }}" aria-label="Select event {{ $events->firstItem() + $i }}"></td>@endif
+                        @if($canDeleteEvents)<td><input class="row-check" type="checkbox" value="{{ $e->id }}" aria-label="Select event {{ $events->firstItem() + $i }}"></td>@endif
                         <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $events->firstItem() + $i }}</td>
                         <td>
                             @php $code=$e->event_type; $catMap=['D1'=>'detection','D2'=>'detection','D3'=>'detection','B1'=>'behavior','B2'=>'behavior','B3'=>'behavior','B4'=>'behavior','B5'=>'behavior','S1'=>'system','S2'=>'system','S3'=>'system']; $cat=$catMap[$code]??'unknown'; @endphp
@@ -70,13 +63,13 @@
     <div class="d-md-none">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="text-muted small">Events on this page</span>
-            @if($canDeleteEvents)<label class="small"><input class="event-select-all" type="checkbox"> Select all on this page</label>@endif
+            @if($canDeleteEvents)<label class="small"><input class="select-all" type="checkbox"> Select all on this page</label>@endif
         </div>
         @foreach($events as $i => $e)
         <article class="card p-3 mb-2">
             <div class="d-flex justify-content-between align-items-start gap-2">
                 <div><span class="text-muted small">SL {{ $events->firstItem() + $i }}</span> <span class="badge bg-primary status-badge">{{ $e->event_type }}</span></div>
-                @if($canDeleteEvents)<input class="event-select" type="checkbox" value="{{ $e->id }}" aria-label="Select event {{ $events->firstItem() + $i }}">@endif
+                @if($canDeleteEvents)<input class="row-check" type="checkbox" value="{{ $e->id }}" aria-label="Select event {{ $events->firstItem() + $i }}">@endif
             </div>
             <div class="d-flex flex-wrap gap-2 mt-2 small">
                 <span class="badge bg-dark">Track {{ $e->temporary_track_id }}</span>
@@ -98,31 +91,7 @@ document.querySelectorAll('.delete-event-form').forEach(form=>form.addEventListe
     event.preventDefault();
     Swal.fire({title:'Move event to Trash?',text:'This event can be restored later.',icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',confirmButtonText:'Move to Trash'}).then(result=>{if(result.isConfirmed)form.submit()});
 }));
-const eventChecks=[...document.querySelectorAll('.event-select')];
-const eventSelectAll=[...document.querySelectorAll('.event-select-all')];
-const eventBulkForm=document.getElementById('eventBulkDelete');
-function updateEventSelection(){
-    const selected=[...new Set(eventChecks.filter(check=>check.checked).map(check=>check.value))];
-    eventSelectAll.forEach(control=>control.checked=selected.length>0&&selected.length===new Set(eventChecks.map(check=>check.value)).size);
-    if(!eventBulkForm)return;
-    eventBulkForm.classList.toggle('d-none',selected.length===0);
-    document.getElementById('eventSelectedCount').textContent=selected.length;
-    const hidden=document.getElementById('eventBulkIds');
-    hidden.replaceChildren(...selected.map(id=>{const input=document.createElement('input');input.type='hidden';input.name='ids[]';input.value=id;return input}));
-}
-eventChecks.forEach(check=>check.addEventListener('change',()=>{
-    eventChecks.filter(other=>other.value===check.value).forEach(other=>other.checked=check.checked);
-    updateEventSelection();
-}));
-eventSelectAll.forEach(control=>control.addEventListener('change',()=>{
-    eventChecks.forEach(check=>check.checked=control.checked);
-    updateEventSelection();
-}));
-eventBulkForm?.addEventListener('submit',event=>{
-    event.preventDefault();
-    const count=new Set(eventChecks.filter(check=>check.checked).map(check=>check.value)).size;
-    Swal.fire({title:`Move ${count} event(s) to Trash?`,text:'These events can be restored later.',icon:'warning',showCancelButton:true,confirmButtonColor:'#dc2626',confirmButtonText:'Move to Trash'}).then(result=>{if(result.isConfirmed)eventBulkForm.submit()});
-});
+
 </script>
 @endpush
 @endsection
