@@ -45,7 +45,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style="font-size:12px;color:var(--color-text-muted)"><span>Showing {{ $jobs->firstItem() }}–{{ $jobs->lastItem() }} of {{ $jobs->total() }}</span>{{ $jobs->links() }}</div>
+        <div class="card-footer bg-white"><x-pagination :paginator="$jobs" /></div>
     </div>
 @endif
 @push("scripts")

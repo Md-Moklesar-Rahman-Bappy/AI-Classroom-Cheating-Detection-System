@@ -32,7 +32,7 @@
 </tbody>
 </table>
 </div>
-<div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style="font-size:12px;color:var(--color-text-muted)"><span>Showing {{ $sessions->firstItem() }}–{{ $sessions->lastItem() }} of {{ $sessions->total() }}</span>{{ $sessions->links() }}</div>
+<div class="card-footer bg-white"><x-pagination :paginator="$sessions" /></div>
 </div>
 <div class="d-md-none">
 @foreach($sessions as $s)
@@ -42,7 +42,6 @@
 <div class="mt-3"><a href="{{ route("exam-sessions.show",$s) }}" class="btn btn-sm btn-outline-primary">View</a></div>
 </div>
 @endforeach
-<div class="d-flex justify-content-center mt-3">{{ $sessions->links() }}</div>
 </div>
 @endif
 @endsection

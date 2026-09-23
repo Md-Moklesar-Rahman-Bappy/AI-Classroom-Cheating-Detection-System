@@ -93,7 +93,7 @@ class DetectionEventController extends Controller
 
     public function trashed()
     {
-        $events = DetectionEvent::onlyTrashed()->with(['job'])->paginate(15);
+        $events = DetectionEvent::onlyTrashed()->with(['job'])->paginate(15)->withQueryString();
         return view('detection-events.index', compact('events'));
     }
 }

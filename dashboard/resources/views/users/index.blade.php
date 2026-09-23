@@ -44,7 +44,7 @@
 </tbody>
 </table>
 </div>
-<div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style="font-size:12px;color:var(--color-text-muted)"><span>Showing {{ $users->firstItem() }}–{{ $users->lastItem() }} of {{ $users->total() }}</span>{{ $users->links() }}</div>
+<div class="card-footer bg-white"><x-pagination :paginator="$users" /></div>
 </div>
 <div class="d-md-none">
 @foreach($users as $u)
@@ -58,7 +58,6 @@
 </div>
 </div>
 @endforeach
-<div class="d-flex justify-content-center mt-3">{{ $users->links() }}</div>
 </div>
 @endif
 @endsection

@@ -53,7 +53,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-footer bg-white d-flex justify-content-between align-items-center" style="font-size:12px;color:#64748b;"><span>Showing {{ $events->firstItem() }}–{{ $events->lastItem() }} of {{ $events->total() }}</span> {{ $events->links() }}</div>
+        <div class="card-footer bg-white"><x-pagination :paginator="$events" /></div>
     </div>
 @endif
 @push("scripts")

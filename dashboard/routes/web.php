@@ -91,7 +91,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('help.index');
     })->name('help.index');
     Route::get('metrics', function () {
-        $metrics = ProcessingMetric::with('analysisJob')->paginate(10);
+        $metrics = ProcessingMetric::with('analysisJob')->paginate(10)->withQueryString();
 
         return view('metrics.index', compact('metrics'));
     })->name('metrics.index');

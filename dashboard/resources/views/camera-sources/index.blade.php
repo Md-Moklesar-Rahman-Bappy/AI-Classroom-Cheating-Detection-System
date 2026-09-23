@@ -44,7 +44,7 @@
 </tbody>
 </table>
 </div>
-<div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style="font-size:12px;color:var(--color-text-muted)"><span>Showing {{ $sources->firstItem() }}–{{ $sources->lastItem() }} of {{ $sources->total() }}</span>{{ $sources->links() }}</div>
+<div class="card-footer bg-white"><x-pagination :paginator="$sources" /></div>
 </div>
 <div class="d-md-none">
 @foreach($sources as $s)
@@ -54,7 +54,6 @@
 <div class="d-flex gap-2 mt-3"><a href="{{ route("camera-sources.show",$s) }}" class="btn btn-sm btn-outline-primary">View</a><a href="{{ route("camera-sources.edit",$s) }}" class="btn btn-sm btn-outline-secondary">Edit</a></div>
 </div>
 @endforeach
-<div class="d-flex justify-content-center mt-3">{{ $sources->links() }}</div>
 </div>
 @endif
 @push("scripts")

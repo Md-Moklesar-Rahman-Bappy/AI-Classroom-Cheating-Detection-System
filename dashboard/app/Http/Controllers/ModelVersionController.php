@@ -10,7 +10,7 @@ class ModelVersionController extends Controller
 {
     public function index()
     {
-        $models = ModelVersion::paginate(10);
+        $models = ModelVersion::paginate(10)->withQueryString();
 
         return view('model-versions.index', compact('models'));
     }

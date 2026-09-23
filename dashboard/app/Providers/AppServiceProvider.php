@@ -6,6 +6,7 @@ use App\Models\AnalysisJob;
 use App\Models\VideoAsset;
 use App\Policies\AnalysisJobPolicy;
 use App\Policies\VideoAssetPolicy;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::useBootstrapFive();
+
         Gate::policy(VideoAsset::class, VideoAssetPolicy::class);
         Gate::policy(AnalysisJob::class, AnalysisJobPolicy::class);
     }

@@ -50,7 +50,7 @@
             @endforeach
         </div>
     </form>
-    <div class="mt-3 d-flex justify-content-between align-items-center" style="font-size:12px;color:#64748b;"><span>Showing {{ $evidences->firstItem() }}-{{ $evidences->lastItem() }} of {{ $evidences->total() }}</span>{{ $evidences->links() }}</div>
+    <div class="mt-3"><x-pagination :paginator="$evidences" /></div>
 @endif
 @push("scripts")
 <script>document.getElementById('selectAll')?.addEventListener('change',e=>{document.querySelectorAll('input[name="ids[]"]').forEach(c=>c.checked=e.target.checked)});</script>

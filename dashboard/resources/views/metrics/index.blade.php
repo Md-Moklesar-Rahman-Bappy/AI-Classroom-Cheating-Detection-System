@@ -60,7 +60,7 @@
 @endforeach
 </div>
 @endif
-<div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style="font-size:12px;color:var(--color-text-muted)"><span>Showing {{ $metrics->firstItem() ?? 0 }}–{{ $metrics->lastItem() ?? 0 }} of {{ $metrics->total() }}</span>{{ $metrics->links() }}</div>
+<div class="card-footer bg-white"><x-pagination :paginator="$metrics" /></div>
 </div>
 
 @push("scripts")

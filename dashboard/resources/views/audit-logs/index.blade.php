@@ -59,7 +59,7 @@
 </tbody>
 </table>
 </div>
-<div class="card-footer bg-white d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2" style="font-size:12px;color:var(--color-text-muted)"><span>Showing {{ $logs->firstItem() }}–{{ $logs->lastItem() }} of {{ $logs->total() }}</span>{{ $logs->links() }}</div>
+<div class="card-footer bg-white"><x-pagination :paginator="$logs" /></div>
 </div>
 <div class="d-md-none">
 @foreach($logs as $l)
@@ -69,7 +69,6 @@
 <div class="text-muted" style="font-size:11px">{{ $l->created_at }}</div>
 </div>
 @endforeach
-<div class="d-flex justify-content-center mt-3">{{ $logs->links() }}</div>
 </div>
 @endif
 @endsection
