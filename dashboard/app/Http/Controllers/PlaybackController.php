@@ -10,10 +10,6 @@ use Illuminate\Support\Facades\Response;
 
 class PlaybackController extends Controller
 {
-    public function __construct()
-    {
-        $this->authorizeResource(VideoAsset::class, 'videoAsset');
-    }
 
     public function show(VideoAsset $videoAsset)
     {

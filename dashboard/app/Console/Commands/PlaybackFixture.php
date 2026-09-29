@@ -7,21 +7,26 @@ use Illuminate\Support\Str;
 
 class PlaybackFixture extends Command
 {
-    protected $signature = 'playback:fixture {videoAsset?}';
-    protected $description = 'Generate a realistic playback overlay fixture JSON';
+    protected $signature = 'playback:fixture {videoAsset : The video asset id (required)}';
+    protected $description = 'Generate a realistic playback overlay fixture JSON for a video asset';
 
     public function handle()
     {
-        $asset = $this->argument('videoAsset');
-        $videoAssetId = $asset ? (int)$asset : 1;
+        $videoAssetId = (int)$this->argument('videoAsset');
         $videoAsset = VideoAsset::find($videoAssetId);
+        if (! $videoAsset) {
+            $this->error("VideoAsset id={$videoAssetId} not found.");
+            return 1;
+        }
+        if ($videoAsset->width === null || $videoAsset->height === null || $videoAsset->fps === null || $videoAsset->duration === null || $videoAsset->duration <= 0) {
+            $this->error("VideoAsset id={$videoAssetId} is missing width/height/fps/duration. Run: php artisan video:probe {$videoAssetId}");
+            return 1;
+        }
+        $w = $videoAsset->width; $h = $videoAsset->height; $fps = $videoAsset->fps; $duration = $videoAsset->duration;
         $dir = storage_path("app/playback/{$videoAssetId}");
         @mkdir($dir, 0755, true);
 
-        $duration = 120.0;
-        $fps = 25;
         $stride = 5;
-        $w = 1920; $h = 1080;
         $frames = [];
         $time = 0.0;
         $trackIds = [3, 8, 11, 14]; // persistent drifting people
@@ -35,7 +40,7 @@ class PlaybackFixture extends Command
                 $boxes[] = [
                     'id' => $tid,
                     'cls' => 'person',
-                    'conf' => 0.82 + (sin($t * 0.4 + $tid) * 0.08),
+                    'conf' => max(0.4, min(0.98, 0.82 + (sin($t * 0.4 + $tid) * 0.08))),
                     'xyxy' => [max(0, $cx - 90), max(0, $cy - 180), min($w, $cx + 90), min($h, $cy + 180)],
                 ];
             }
@@ -44,16 +49,16 @@ class PlaybackFixture extends Command
                 $boxes[] = [
                     'id' => 7,
                     'cls' => 'cell phone',
-                    'conf' => 0.78 + (sin($t * 2) * 0.05),
-                    'xyxy' => [455 + (int)(sin($t * 3) * 30), 300 + (int)(cos($t * 2) * 10), 500 + (int)(sin($t * 3) * 30), 350 + (int)(cos($t * 2) * 10)],
+                    'conf' => max(0.4, min(0.98, 0.78 + (sin($t * 2) * 0.05))),
+                    'xyxy' => [max(0, 455 + (int)(sin($t * 3) * 30)), max(0, 300 + (int)(cos($t * 2) * 10)), min($w, 500 + (int)(sin($t * 3) * 30)), min($h, 350 + (int)(cos($t * 2) * 10))],
                 ];
             }
             if ($t >= 65.0 && $t <= 71.2) {
                 $boxes[] = [
                     'id' => 19,
                     'cls' => 'cell phone',
-                    'conf' => 0.81 + (sin($t * 1.8) * 0.04),
-                    'xyxy' => [860 + (int)(cos($t * 3) * 25), 410 + (int)(sin($t * 2) * 15), 910 + (int)(cos($t * 3) * 25), 460 + (int)(sin($t * 2) * 15)],
+                    'conf' => max(0.4, min(0.98, 0.81 + (sin($t * 1.8) * 0.04))),
+                    'xyxy' => [max(0, 860 + (int)(cos($t * 3) * 25)), max(0, 410 + (int)(sin($t * 2) * 15)), min($w, 910 + (int)(cos($t * 3) * 25)), min($h, 460 + (int)(sin($t * 2) * 15))],
                 ];
             }
             $frames[] = ['t' => round($t, 2), 'boxes' => $boxes];
