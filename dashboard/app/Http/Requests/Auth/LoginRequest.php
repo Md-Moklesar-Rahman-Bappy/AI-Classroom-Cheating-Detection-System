@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\LoginProtectionService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -40,16 +41,32 @@ class LoginRequest extends FormRequest
      */
     public function authenticate(): void
     {
+        $service = new LoginProtectionService($this->string('email'), $this->ip());
+
+        if ($service->isPairBlocked()) {
+            throw ValidationException::withMessages([
+                'email' => trans('auth.throttle', ['seconds' => $service->getPairBlockRemaining()]),
+            ]);
+        }
+
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            $service->recordFailedAttempt();
+
+            // Pair-level block message after 3 attempts
+            if ($service->isPairBlocked()) {
+                throw ValidationException::withMessages([
+                    'email' => trans('auth.blocked_pair', ['hours' => ceil(config('login_protection.pair_block_seconds', 86400) / 3600)]),
+                ]);
+            }
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
 
+        $service->clearPairCounter();
         RateLimiter::clear($this->throttleKey());
     }
 
