@@ -94,6 +94,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         return view('metrics.index', compact('metrics'));
     })->name('metrics.index');
+    Route::middleware('role:system_admin')->group(function () {
+        Route::get('security', [\App\Http\Controllers\SecurityController::class, 'index'])->name('security.index');
+        Route::post('security/unblock-pair', [\App\Http\Controllers\SecurityController::class, 'unblockPair'])->name('security.unblock-pair');
+        Route::post('security/unblock-ip/{ip?}', [\App\Http\Controllers\SecurityController::class, 'unblockIp'])->name('security.unblock-ip');
+    });
 });
 
 Route::middleware('auth')->group(function () {

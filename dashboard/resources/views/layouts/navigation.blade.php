@@ -15,6 +15,11 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    @if(auth()->check() && auth()->user()->hasRole('system_admin'))
+                        <x-nav-link :href="route('security.index')" :active="request()->routeIs('security.index')">
+                            {{ __('Security Center') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 

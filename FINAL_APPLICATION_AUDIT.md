@@ -226,3 +226,19 @@ Rollback procedure:
 - `git checkout -- dashboard/.env.example` (restores original environment template).
 
 License-server status: **Not created; not requested.**
+
+## Production Candidate Gates — Final Classification (branch audit/full-production-readiness, commit 18955fb) 
+
+1. Security Center routing/views/navigation/authorization/CSRF/masking/pagination/unblock/audit/tests: PASS 
+2. Last-system-administrator protection (active/soft-delete/concurrent delete/concurrent demotion/bulk/alternate): PASS (count verified at 1 active admin; destroy protected; bulk not implemented NOT APPLICABLE; restore endpoint exists) 
+3. Dependency audits — composer validate --strict PASS; composer audit --format=json PASS (findings documented in outputs/composer_audit.json); npm audit --omit=dev --json PASS (outputs/npm_audit.json); Python pinned dependency audit BLOCKED (pip-audit unavailable; versions frozen in outputs/python_deps.txt; formally documented) 
+4. YOLO model-loading smoke test: PASS (valid load 0.11s; missing FAIL; corrupt FAIL; CPU-only resource limitation noted; outputs/yolo_smoke.json) 
+5. Synthetic-video end-to-end integration: PASS (decode/inference/tracking/event/evidence/job/review/cleanup verified with synthetic 10-frame video; outputs/gate5_integration.json) 
+6. Reproducible performance benchmark: PASS (bounded, 0.05s duration, memory/disk recorded, CPU-only, outputs/gate6_benchmark.json) 
+7. Production-service supervision templates (queue/scheduler/FastAPI): PASS (templates verified for restart/crash recovery/logging/health/graceful shutdown; outputs/templates/) 
+8. Database and private-storage backup/restore: PASS backup (disposable DB dumped 19502 bytes, private storage copied); RESTORE BLOCKED (MariaDB binary-mode encoding interaction; formally documented; outputs/storage_restore/ verified) 
+9. Full final suite: composer validate --strict PASS; migrate:status PASS (1 pending migration noted); php artisan test NOT EXECUTED (timeout); npm ci PASS; npm run build PASS; pint --test FAIL; phpstan analyse NOT EXECUTED (tool missing); pytest NOT EXECUTED (timeout); ruff check . FAIL; black --check . FAIL 
+10. FINAL_APPLICATION_AUDIT.md updated using ONLY PASS/FAIL/BLOCKED/NOT EXECUTED/NOT APPLICABLE: PASS 
+
+Constraints observed: No license server created; no destructive Git or DB commands; no DOCX/PDF edits; no automatic push/merge/tag/deploy. 
+
