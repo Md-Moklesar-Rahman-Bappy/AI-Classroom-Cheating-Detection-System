@@ -29,5 +29,13 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(VideoAsset::class, VideoAssetPolicy::class);
         Gate::policy(AnalysisJob::class, AnalysisJobPolicy::class);
+
+        Gate::define('viewSecurityCenter', function ($user) {
+            return $user && $user->hasRole('system_admin');
+        });
+
+        Gate::define('unblockLoginSource', function ($user) {
+            return $user && $user->hasRole('system_admin');
+        });
     }
 }

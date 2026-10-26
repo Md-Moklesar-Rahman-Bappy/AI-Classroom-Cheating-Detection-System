@@ -91,17 +91,31 @@ class LoginProtectionService
         $ipMax = config('login_protection.ip_max_failures', 10);
         $ipBlock = config('login_protection.ip_block_seconds', 3600);
 
-        // Pair tracking
+        // Pair tracking with progressive escalation
         $pairData = Cache::get($pairKey, []);
         if (! is_array($pairData)) {
-            $pairData = ['count' => 0, 'first' => now()->timestamp];
+            $pairData = ['count' => 0, 'first' => now()->timestamp, 'blocks' => 0];
         }
         $pairData['count'] += 1;
         $pairData['last'] = now()->timestamp;
-        Cache::put($pairKey, $pairData, $pairBlock);
+
+        // Progressive escalation based on previous blocks
+        $blocks = $pairData['blocks'] ?? 0;
+        $blockDuration = config('login_protection.pair_initial_block_seconds', 900);
+        if ($blocks === 1) {
+            $blockDuration = config('login_protection.pair_escalation_one_seconds', 3600);
+        } elseif ($blocks >= 2) {
+            $blockDuration = min(config('login_protection.pair_escalation_two_seconds', 21600), config('login_protection.pair_max_block_seconds', 86400));
+        } else {
+            $blockDuration = min($blockDuration, config('login_protection.pair_max_block_seconds', 86400));
+        }
+
+        Cache::put($pairKey, $pairData, max($pairBlock, $blockDuration));
 
         if ($pairData['count'] >= $pairMax) {
-            Cache::put($pairKey, now()->addSeconds($pairBlock)->timestamp, $pairBlock);
+            $pairData['blocks'] = ($pairData['blocks'] ?? 0) + 1;
+            Cache::put($pairKey, $pairData, max($pairBlock, $blockDuration));
+            Cache::put($pairKey, now()->addSeconds($blockDuration)->timestamp, max($pairBlock, $blockDuration));
         }
 
         // IP abuse tracking
