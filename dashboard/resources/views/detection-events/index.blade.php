@@ -22,7 +22,7 @@
         <h5>No events</h5><p class="text-muted" style="font-size:13px;">No detection events match the current filter. Adjust filters or wait for new analysis jobs.</p>
     </div>
 @else
-    @php($canDeleteEvents = auth()->user()->hasAnyRole(['system_admin', 'exam_admin']))
+    @php $canDeleteEvents = auth()->user()->hasAnyRole(['system_admin', 'exam_admin']); @endphp
     <x-bulk-delete-bar :action="route('detection-events.bulk-delete')" label="event items" />
     <div class="card d-none d-md-block">
         <div class="table-responsive">

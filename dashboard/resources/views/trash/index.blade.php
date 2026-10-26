@@ -6,8 +6,8 @@
     <span class="badge bg-warning text-dark">Trash</span>
 </div>
 
-@php($trashCanRestore = auth()->user()->hasAnyRole(['system_admin','exam_admin']))
-@php($trashCanForce = auth()->user()->hasAnyRole(['system_admin']))
+@php $trashCanRestore = auth()->user()->hasAnyRole(['system_admin','exam_admin']); @endphp
+@php $trashCanForce = auth()->user()->hasAnyRole(['system_admin']); @endphp
 
 @php
 $groups = [
@@ -52,9 +52,9 @@ $groups = [
                     @foreach($items as $i => $item)
                     <tr>
                         @if($trashCanRestore || $trashCanForce)
-                        <td><input type="checkbox" class="trash-select" value='{"type":"{{ $typeName }}","id":{{ $item->id }}}' aria-label="Select {{ strtolower($label) }} {{ $items->firstItem() + $i }}"></td>
+                        <td><input type="checkbox" class="trash-select" value='{"type":"{{ $typeName }}","id":{{ $item->id }}}' aria-label="Select {{ strtolower($label) }} {{ $i + 1 }}"></td>
                         @endif
-                        <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $items->firstItem() + $i }}</td>
+                        <td class="text-muted" style="font-variant-numeric:tabular-nums">{{ $i + 1 }}</td>
                         <td>{{ $item->name ?? $item->original_filename ?? $item->event_type ?? $item->email ?? ($item->version ?? $item->identifier ?? '—') }}</td>
                         <td class="text-muted" style="font-size:11px">{{ $item->deleted_at ? $item->deleted_at->format('Y-m-d H:i') : '—' }}</td>
                         <td>
