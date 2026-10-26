@@ -43,11 +43,6 @@
             refreshBulk();
         }));
         refreshBulk();
-        if (bulkForm) bulkForm.addEventListener('submit', e => {
-            const ids = checks().filter(c => c.checked).map(c => c.value);
-            if (!ids.length) { e.preventDefault(); return; }
-            e.preventDefault();
-        });
     });
 })();
 window.confirmBulk = function(title, text, color, btnText) {

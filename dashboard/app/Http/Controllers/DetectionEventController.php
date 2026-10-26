@@ -71,7 +71,8 @@ class DetectionEventController extends Controller
             $count++;
         }
 
-        return back()->with('success', "$count event(s) moved to Trash.");
+        return redirect()->route('detection-events.index')
+            ->with('success', "$count event(s) moved to Trash.");
     }
 
     public function restore(Request $request, $id)

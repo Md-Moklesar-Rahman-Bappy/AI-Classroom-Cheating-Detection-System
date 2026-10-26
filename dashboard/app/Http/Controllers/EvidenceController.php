@@ -112,7 +112,8 @@ class EvidenceController extends Controller
             $count++;
         }
 
-        return back()->with('success', "$count evidence item(s) moved to Trash.");
+        return redirect()->route('evidence.index')
+            ->with('success', "$count evidence item(s) moved to Trash.");
     }
 
     public function restore($id)
